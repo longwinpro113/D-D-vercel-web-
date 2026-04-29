@@ -91,6 +91,7 @@ export default function DailyReportPage() {
     const [availableDates, setAvailableDates] = useState<HistoryDateOption[]>([]);
     const [clients, setClients] = useState<string[]>([]);
     const [rows, setRows] = useState<DailyReportRow[]>([]);
+    const [orderRyFilter, setOrderRyFilter] = useState("");
     const [editRow, setEditRow] = useState<DailyReportRow | null>(null);
     const [editForm, setEditForm] = useState(blankEdit);
     const [snackbar, setSnackbar] = useState<{
@@ -189,9 +190,19 @@ export default function DailyReportPage() {
         void fetchRows();
     }, [fetchRows]);
 
+    const filteredRows = useMemo(() => {
+        if (!orderRyFilter) return rows;
+        const search = orderRyFilter.toLowerCase();
+        return rows.filter(r => 
+            (r.ry_number || "").toLowerCase().includes(search) ||
+            (r.article || "").toLowerCase().includes(search) ||
+            (r.model_name || "").toLowerCase().includes(search)
+        );
+    }, [rows, orderRyFilter]);
+
     const grouped = useMemo(
-        () => groupByDate(rows) as GroupedDailyReportRows[],
-        [rows]
+        () => groupByDate(filteredRows) as GroupedDailyReportRows[],
+        [filteredRows]
     );
 
     const openEdit = (row: DailyReportRow) => {
@@ -261,9 +272,8 @@ export default function DailyReportPage() {
         }
     };
 
-    const exportPdf = async (date: string, clientName: string) => {
-        const group = grouped.find(g => g.date === date);
-        if (!group) return;
+    const exportPdf = async (clientName: string) => {
+        if (grouped.length === 0) return;
         
         try {
             const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
@@ -287,167 +297,106 @@ export default function DailyReportPage() {
                 }
             } catch(e) { console.warn("Font error", e); }
 
-            // Xác định các cột size có dữ liệu - lọc bỏ hoàn toàn các cột không có data
-            let activeSizes = entrySizes.filter(s => {
-                return group.rows.some(row => {
-                    const val = row[sizeToCol(s)];
-                    const num = parseFloat(String(val)) || 0;
-                    return num > 0;
-                });
-            });
-            if (activeSizes.length === 0 && entrySizes.length > 0) activeSizes = [entrySizes[0]];
-
-            // const firstRow = group.rows[0] || {};
-            const totalExported = group.rows.reduce((sum, r) => sum + (Number(r.shipped_quantity) || 0), 0);
-
             const pageWidth = doc.internal.pageSize.getWidth();
-            
-            // Tính toán độ rộng cột linh hoạt
-            const isDensityHigh = activeSizes.length > 15;
-            const sizeColWidth = isDensityHigh ? 18 : 22;
-            const modelNameWidth = isDensityHigh ? 55 : 70;
-            const artWidth = isDensityHigh ? 40 : 50;
+            const pageHeight = doc.internal.pageSize.getHeight();
+            let currentY = 40;
 
-            const tableColumnWidths = [
-                25, // STT
-                70, // ĐƠN HÀNG
-                modelNameWidth, 
-                40, // SL GIAO
-                35, // CÒN LẠI
-                30, // ĐƠN VỊ
-                artWidth, 
-                ...activeSizes.map(() => sizeColWidth),
-                45  // GHI CHÚ
-            ];
-
-            const baseDesiredWidth = tableColumnWidths.reduce((sum, width) => sum + width, 0);
-            
-            // Mở rộng bảng để chiếm ít nhất 92% trang nhằm tránh khoảng trắng 2 bên quá lớn
-            const minTableWidth = pageWidth - 60; 
-            const finalTableWidth = Math.max(baseDesiredWidth, Math.min(baseDesiredWidth * 1.5, minTableWidth));
-            
-            const tableMargin = (pageWidth - finalTableWidth) / 2;
-            const tableLeft = tableMargin;
-            const tableRight = tableLeft + finalTableWidth;
-            const tableWidth = finalTableWidth;
-
-            // --- 2. Header & Top Summary ---
+            // --- Header ---
             doc.setFont('Roboto', 'bold');
             doc.setFontSize(16);
-            doc.text("BIỂU GIAO THÀNH PHẨM", tableLeft, 40);
+            doc.text("BIỂU GIAO THÀNH PHẨM", 30, currentY);
+            currentY += 20;
             
             doc.setFont('Roboto', 'normal');
             doc.setFontSize(10);
-            doc.text("ĐƠN VỊ CHUYỂN: DD (Long An)", tableLeft, 60);
-            doc.text(`ĐƠN VỊ LÃNH: ${clientName.toUpperCase()}`, tableRight, 60, { align: "right" });
-            const summaryY = 85;
-            doc.text(`Ngày: ${group.date}`, tableLeft, summaryY);
-            doc.text("Kỳ: T1", tableLeft + (tableWidth / 2), summaryY, { align: "center" });
+            doc.text("ĐƠN VỊ CHUYỂN: DD (Long An)", 30, currentY);
+            doc.text(`ĐƠN VỊ LÃNH: ${clientName.toUpperCase()}`, pageWidth - 30, currentY, { align: "right" });
+            currentY += 30;
 
-            // Nổi bật Tổng giao phía trên
-            const totalLabel = `Tổng giao: ${totalExported}`;
-            const labelWidth = doc.getTextWidth(totalLabel);
-            const rectWidth = labelWidth + 15; 
-            doc.setFillColor(255, 255, 0); 
-            doc.rect(tableLeft, 93, rectWidth, 18, 'F'); 
+            for (let gIdx = 0; gIdx < grouped.length; gIdx++) {
+                const group = grouped[gIdx];
+                const totalExported = group.rows.reduce((sum, r) => sum + (Number(r.shipped_quantity) || 0), 0);
 
-            doc.setFont('Roboto', 'bold');
-            doc.setTextColor(0, 0, 0); 
-            doc.text(totalLabel, tableLeft + 7, 105);
-            doc.setTextColor(0, 0, 0);
+                if (currentY > pageHeight - 100 && gIdx > 0) {
+                    doc.addPage();
+                    currentY = 40;
+                }
 
-            // --- 3. Cấu trúc Table Data ---
-            const head = [[
-                "STT", "ĐƠN HÀNG", "MODEL NAME", "SL GIAO", 
-                "CÒN LẠI", "ĐƠN VỊ", "ART", ...activeSizes.map(String), "GHI CHÚ"
-            ]];
+                // Date Sub-header
+                doc.setFont('Roboto', 'bold');
+                doc.setFontSize(11);
+                doc.setTextColor(59, 130, 246);
+                doc.text(`NGÀY GIAO: ${group.date}`, 30, currentY);
+                doc.setTextColor(0, 0, 0);
+                currentY += 15;
 
-            const body = group.rows.map((row, i) => {
-                const isOk = (Number(row.remaining_quantity) || 0) <= 0;
-                return [
-                    i + 1,
-                    row.ry_number || "",
-                    row.model_name || "",
-                    row.shipped_quantity || 0,
-                    isOk ? "OK" : row.remaining_quantity,
-                    "ĐÔI",
-                    row.article || "",
-                    ...activeSizes.map(s => {
-                        const val = row[sizeToCol(s as string|number)];
-                        return (val && val !== 0 && val !== "0") ? val : "-";
-                    }),
-                    row.note || ""
-                ] as (string | number)[];
-            });
+                // Determine active sizes
+                let activeSizes = entrySizes.filter(s => {
+                    return group.rows.some(row => {
+                        const val = row[sizeToCol(s)];
+                        return (parseFloat(String(val)) || 0) > 0;
+                    });
+                });
+                if (activeSizes.length === 0 && entrySizes.length > 0) activeSizes = [entrySizes[0]];
 
-            const footerTotals = [
-                "",             
-                "",             
-                "Tổng",         
-                totalExported,  
-                "",             
-                "",             
-                "",             
-                ...activeSizes.map(() => ""),
-                ""              
-            ];
+                const head = [[
+                    "STT", "ĐƠN HÀNG", "ĐỢT", "MODEL NAME", "SL GIAO", 
+                    "CÒN LẠI", "ĐƠN VỊ", "ART", ...activeSizes.map(String), "GHI CHÚ"
+                ]];
 
-            const sizeColumnCount = activeSizes.length;
-            const sizeStyles: any = {};
-            activeSizes.forEach((_, index) => {
-                sizeStyles[7 + index] = { cellWidth: 22 };
-            });
+                const body = group.rows.map((row, i) => {
+                    const isOk = (Number(row.remaining_quantity) || 0) <= 0;
+                    return [
+                        i + 1,
+                        row.ry_number || "",
+                        row.delivery_round || "",
+                        row.model_name || "",
+                        row.shipped_quantity ?? 0,
+                        isOk ? "OK" : (row.remaining_quantity ?? 0),
+                        "ĐÔI",
+                        row.article || "",
+                        ...activeSizes.map(s => {
+                            const val = row[sizeToCol(s as string|number)];
+                            return (val && val !== 0 && val !== "0") ? val : "-";
+                        }),
+                        row.note || ""
+                    ];
+                });
 
-            // --- 4. Render Table ---
-            autoTable(doc, {
-                startY: 125,
-                head: head,
-                body: body,
-                foot: [footerTotals], 
-                theme: 'grid',
-                styles: {
-                    font: 'Roboto',
-                    fontSize: isDensityHigh ? 6 : 7.5,
-                    cellPadding: isDensityHigh ? 1.5 : 3,
-                    valign: 'middle',
-                    halign: 'center',
-                    lineColor: [80, 80, 80]
-                },
-                headStyles: {
-                    fillColor: [240, 240, 240],
-                    textColor: [0, 0, 0],
-                    fontStyle: 'bold',
-                    lineWidth: 0.5
-                },
-                footStyles: {
-                    fillColor: [255, 255, 255],
-                    textColor: [0, 0, 0],
-                    fontStyle: 'bold',
-                    fontSize: 8,
-                    lineWidth: { top: 0.5, bottom: 0, left: 0, right: 0 }     
-                },
-                columnStyles: {
-                    0: { cellWidth: 25 }, 
-                    1: { cellWidth: 70, fontStyle: 'bold' }, 
-                    2: { cellWidth: modelNameWidth, fontStyle: 'normal' }, 
-                    3: { cellWidth: 40, fontStyle: 'bold' }, 
-                    4: { cellWidth: 35 }, 
-                    5: { cellWidth: 30 }, 
-                    6: { cellWidth: artWidth }, 
-                    ...sizeStyles,
-                    [7 + sizeColumnCount]: { cellWidth: 45, halign: 'center' } 
-                },
-                didParseCell: function (data: any) {
-                    if (data.column.index === 4 && data.cell.text[0] === 'OK') {
-                        data.cell.styles.textColor = [0, 128, 0];
-                        data.cell.styles.fontStyle = 'bold';
+                autoTable(doc, {
+                    startY: currentY,
+                    head: head,
+                    body: body,
+                    theme: 'grid',
+                    tableWidth: 'wrap', // Fit content
+                    styles: {
+                        font: 'Roboto',
+                        fontSize: activeSizes.length > 15 ? 6 : 7.5,
+                        cellPadding: 2,
+                        valign: 'middle',
+                        halign: 'center',
+                        lineColor: [100, 100, 100]
+                    },
+                    headStyles: {
+                        fillColor: [241, 245, 249],
+                        textColor: [0, 0, 0],
+                        fontStyle: 'bold',
+                    },
+                    margin: { left: 30, right: 30 },
+                    didParseCell: (data) => {
+                        if (data.column.index === 5 && data.cell.text[0] === 'OK') {
+                            data.cell.styles.textColor = [0, 128, 0];
+                            data.cell.styles.fontStyle = 'bold';
+                        }
                     }
-                },
-                margin: { left: tableMargin, right: tableMargin },
-                tableWidth
-            });
+                });
 
-            doc.save(`Bieu_Giao_${clientName.replace(/\s+/g, '_')}_${group.date.replace(/\//g, '-')}.pdf`);
+                currentY = (doc as any).lastAutoTable.finalY + 30;
+            }
+
+            const fileNameDate = selectedDate ? selectedDate.replace(/\//g, '-') : "All";
+            doc.save(`Bieu_Giao_${clientName.replace(/\s+/g, '_')}_${fileNameDate}.pdf`);
+
         } catch (error: any) {
             console.error("PDF Export error:", error);
             alert("Lỗi xuất PDF: " + error.message);
@@ -539,7 +488,6 @@ export default function DailyReportPage() {
                             return option.formatted_date || "";
                         }}
                         value={(availableDates.find(d => d.export_date === selectedDate) || null) as any}
-                        disableClearable
                         popupIcon={autocompletePopupIcon}
                         forcePopupIcon={true}
                         onChange={(_, newValue) => {
@@ -553,7 +501,7 @@ export default function DailyReportPage() {
                         renderInput={(params) => (
                             <TextField
                                 {...params}
-                                placeholder="Chọn ngày..."
+                                placeholder="Tất cả các ngày"
                                 variant="outlined"
                                 sx={{
                                     "& .MuiOutlinedInput-root": {
@@ -585,12 +533,43 @@ export default function DailyReportPage() {
                         }}
                     />
 
-                    <button
-                        onClick={() => {
-                            const opt = availableDates.find(d => d.export_date === selectedDate);
-                            const dateToPrint = opt?.formatted_date || (grouped[0]?.date);
-                            if (dateToPrint) exportPdf(dateToPrint, client || "");
+                    <Autocomplete
+                        options={Array.from(new Set(rows.map(r => r.ry_number).filter(Boolean)))}
+                        value={orderRyFilter || null}
+                        freeSolo
+                        popupIcon={autocompletePopupIcon}
+                        forcePopupIcon={true}
+                        onInputChange={(_, newValue) => setOrderRyFilter(newValue)}
+                        onChange={(_, newValue) => setOrderRyFilter(newValue || "")}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                placeholder="Mã đơn hàng..."
+                                variant="outlined"
+                                sx={{
+                                    "& .MuiOutlinedInput-root": {
+                                        height: "42px",
+                                        borderRadius: "12px",
+                                        backgroundColor: "white",
+                                        "& fieldset": { borderColor: "#e2e8f0" },
+                                        "&:hover fieldset": { borderColor: "#cbd5e1" },
+                                        "&.Mui-focused fieldset": { borderColor: "#3b82f6", borderWidth: "1px" },
+                                    },
+                                    "& .MuiInputBase-input": { fontSize: "1rem", color: "#1e293b", fontWeight: "500" }
+                                }}
+                            />
+                        )}
+                        sx={{
+                            width: "240px",
+                            '& .MuiAutocomplete-endAdornment': { right: 8, top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: '4px', alignItems: 'center' },
+                            '& .MuiAutocomplete-clearIndicator, & .MuiAutocomplete-popupIndicator': {
+                                width: 28, height: 28, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9 !important', borderRadius: '999px',
+                            },
                         }}
+                    />
+
+                    <button
+                        onClick={() => exportPdf(client || "")}
                         className="flex items-center justify-center text-rose-600 hover:text-rose-700 transition-all shrink-0 ml-1"
                         title="Xuất PDF"
                         disabled={!client || rows.length === 0}
@@ -600,11 +579,12 @@ export default function DailyReportPage() {
                 </div>
 
                 <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 touch-pan-x overscroll-x-contain report-scrollbar print:border-0 print:overflow-visible">
-                    <table className="border-collapse text-sm w-max min-w-full table-fixed">
+                    <table className="border-collapse text-sm w-max min-w-full table-auto">
                         <thead className="sticky top-0 z-40 bg-slate-100">
                             <tr className="border-b border-slate-200">
-                                <th className="md:sticky md:left-0 top-0 z-50 bg-slate-100 shadow-[inset_-1px_0_0_0_#f1f5f9] px-2 py-3 text-center font-bold text-slate-700 w-12 border-r border-slate-100">STT</th>
-                                <th className="md:sticky md:left-12 top-0 z-50 bg-slate-100 shadow-[inset_-1px_0_0_0_#f1f5f9] px-3 py-3 text-center font-bold text-slate-700 w-40 border-r border-slate-100">Đơn Hàng</th>
+                                <th className="md:sticky md:left-0 top-0 z-50 bg-slate-100 shadow-[inset_-1px_0_0_0_#e2e8f0] px-2 py-3 text-center font-bold text-slate-700 w-12 border-r border-transparent">STT</th>
+                                <th className="md:sticky md:left-12 top-0 z-50 bg-slate-100 shadow-[inset_-1px_0_0_0_#e2e8f0] px-3 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-r border-transparent">Đơn Hàng</th>
+                                <th className="top-0 border-r border-slate-100 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap">Đợt</th>
                                 <th className="top-0 border-r border-slate-100 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap">Article</th>
                                 <th className="top-0 border-r border-slate-100 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap">Model Name</th>
                                 <th className="top-0 border-r border-slate-100 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap">Product</th>
@@ -622,17 +602,23 @@ export default function DailyReportPage() {
                         <tbody>
                             {grouped.map((group) => (
                                 <React.Fragment key={group.date}>
+                                    <tr className="md:sticky top-[45px] z-30">
+                                        <td colSpan={11 + entrySizes.length + 1} className="px-4 py-2 font-bold text-blue-600 text-left border-y border-slate-100 uppercase tracking-wider text-[11px] bg-[#f8fafc] md:sticky md:left-0">
+                                            {group.date}
+                                        </td>
+                                    </tr>
                                     {group.rows.map((row, index) => {
                                         const status = (row.remaining_quantity ?? 0) === 0 ? "Ok" : "Not Ok";
                                         const rowBg = index % 2 === 0 ? "bg-white" : "bg-slate-50";
                                         return (
                                             <tr key={row.id} className={`${rowBg} hover:bg-blue-50/20 transition-colors group border-b border-slate-100 last:border-0`}>
-                                                <td className={`md:sticky md:left-0 z-20 shadow-[inset_-1px_0_0_0_#f1f5f9] px-3 py-2.5 font-bold text-slate-800 text-center whitespace-nowrap ${rowBg} group-hover:bg-blue-50 border-r border-slate-100`}>
+                                                <td className={`md:sticky md:left-0 z-20 shadow-[inset_-1px_0_0_0_#e2e8f0] px-3 py-2.5 font-bold text-slate-800 text-center whitespace-nowrap ${rowBg} group-hover:bg-blue-50 border-r border-transparent`}>
                                                     {index + 1}
                                                 </td>
-                                                <td className={`md:sticky md:left-12 z-20 shadow-[inset_-1px_0_0_0_#f1f5f9] px-3 py-2.5 font-bold text-slate-900 text-center whitespace-nowrap ${rowBg} group-hover:bg-blue-50 border-r border-slate-100`}>
+                                                <td className={`md:sticky md:left-12 z-20 shadow-[inset_-1px_0_0_0_#e2e8f0] px-3 py-2.5 font-bold text-slate-900 text-center whitespace-nowrap ${rowBg} group-hover:bg-blue-50 border-r border-transparent`}>
                                                     {row.ry_number}
                                                 </td>
+                                                <td className="border-r border-slate-100 px-3 py-2.5 font-bold text-orange-600 text-center whitespace-nowrap">{row.delivery_round || "-"}</td>
                                                 <td className="border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.article || "-"}</td>
                                                 <td className="border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.model_name || "-"}</td>
                                                 <td className="border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.product || "-"}</td>
@@ -642,8 +628,8 @@ export default function DailyReportPage() {
                                                 <td className={`border-r border-slate-100 px-3 py-2.5 font-bold text-center whitespace-nowrap ${row.remaining_quantity === 0 ? "text-[#16a34a]" : "text-[#ef4444]"}`}>
                                                     {row.remaining_quantity || 0}
                                                 </td>
-                                                <td className={`px-0 py-0 border-r border-slate-100 whitespace-nowrap text-center`}>
-                                                    <div className={`w-full h-full min-h-[44px] flex items-center justify-center font-bold text-center text-[12px] whitespace-nowrap ${status === 'Ok' ? 'bg-emerald-50 text-emerald-600' : 'bg-[#fee2e2] text-rose-600'}`}>
+                                                <td className={`px-0 py-0 border-r border-slate-100 whitespace-nowrap text-center align-middle ${status === 'Ok' ? 'bg-emerald-50 text-emerald-600' : 'bg-[#fee2e2] text-rose-600'}`}>
+                                                    <div className="w-full h-full min-h-[44px] flex items-center justify-center font-bold text-[12px] whitespace-nowrap">
                                                         {status}
                                                     </div>
                                                 </td>

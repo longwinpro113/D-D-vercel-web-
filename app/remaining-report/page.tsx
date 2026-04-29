@@ -204,7 +204,7 @@ export default function RemainingReportPage() {
                         <thead className="sticky top-0 z-40 bg-slate-100 text-slate-600">
                             <tr className="border-b border-slate-200">
                                 <th className="sticky left-0 z-50 bg-slate-100 px-3 py-3 text-center font-bold text-slate-800 w-12 border-r border-slate-100 shadow-[inset_-1px_0_0_0_#f1f5f9]">STT</th>
-                                <th className="sticky left-12 z-50 bg-slate-100 px-3 py-3 text-center font-bold text-slate-800 w-40 border-r border-slate-100 shadow-[inset_-1px_0_0_0_#f1f5f9]">ĐƠN HÀNG (RY)</th>
+                                <th className="sticky left-12 z-50 bg-slate-100 px-3 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100 shadow-[inset_-1px_0_0_0_#f1f5f9]">ĐƠN HÀNG (RY)</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">ARTICLE</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">MODEL NAME</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">PRODUCT</th>
@@ -223,15 +223,15 @@ export default function RemainingReportPage() {
                                 return (
                                     <tr key={idx} className={`${rowBg} hover:bg-blue-50/50 transition-colors border-b border-slate-100`}>
                                         <td className={`sticky left-0 z-20 ${rowBg} px-3 py-2 text-center font-bold border-r border-slate-100 shadow-[inset_-1px_0_0_0_#f1f5f9]`}>{idx + 1}</td>
-                                        <td className={`sticky left-12 z-20 ${rowBg} px-3 py-2 text-center font-bold text-emerald-700 border-r border-slate-100 shadow-[inset_-1px_0_0_0_#f1f5f9]`}>{row.ry_number}</td>
+                                        <td className={`sticky left-12 z-20 ${rowBg} px-3 py-2 text-center font-bold text-emerald-700 whitespace-nowrap border-r border-slate-100 shadow-[inset_-1px_0_0_0_#f1f5f9]`}>{row.ry_number}</td>
                                         <td className="px-4 py-2 text-center font-bold text-blue-700 whitespace-nowrap border-r border-slate-100">{row.article || "-"}</td>
                                         <td className="px-4 py-2 text-center font-medium whitespace-nowrap border-r border-slate-100">{row.model_name || "-"}</td>
                                         <td className="px-4 py-2 text-center font-medium whitespace-nowrap border-r border-slate-100">{row.product || "-"}</td>
                                         <td className="px-4 py-2 text-center font-bold text-blue-700 whitespace-nowrap border-r border-slate-100 bg-blue-50/20">{row.total_quantity || 0}</td>
                                         <td className="px-4 py-2 text-center font-bold text-purple-700 whitespace-nowrap border-r border-slate-100 bg-purple-50/20">{row.accumulated_total || 0}</td>
                                         <td className={`px-4 py-2 text-center font-bold whitespace-nowrap border-r border-slate-100 bg-slate-50 ${(row.remaining_quantity ?? 0) === 0 ? "text-emerald-600" : "text-rose-600"}`}>{row.remaining_quantity || 0}</td>
-                                        <td className="px-0 py-0 border-r border-slate-100 whitespace-nowrap">
-                                            <div className={`w-full h-full min-h-[36px] flex items-center justify-center font-bold text-center text-[11px] ${(row.remaining_quantity || 0) === 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-[#fee2e2] text-rose-600'}`}>
+                                        <td className={`px-0 py-0 border-r border-slate-100 whitespace-nowrap text-center align-middle ${(row.remaining_quantity || 0) === 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-[#fee2e2] text-rose-600'}`}>
+                                            <div className="w-full h-full min-h-9 flex items-center justify-center font-bold text-[11px]">
                                                 {(row.remaining_quantity || 0) === 0 ? "OK" : "NOT OK"}
                                             </div>
                                         </td>

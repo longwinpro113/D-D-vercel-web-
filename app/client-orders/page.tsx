@@ -17,7 +17,10 @@ type OrderRow = {
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import { Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from "@mui/material";
-import { ChevronDown, X as LucideX, Edit, Trash2, Search, RotateCcw } from "lucide-react";
+import { ChevronDown, X as LucideX, Edit, Trash2, Search, RotateCcw, FileText } from "lucide-react";
+import { FaFilePdf } from "react-icons/fa6";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const autocompletePopupIcon = <ChevronDown size={16} />;
 
@@ -166,6 +169,84 @@ export default function ClientOrdersPage() {
         }
     };
 
+    const exportPdf = async () => {
+        if (filteredRows.length === 0) return;
+        
+        try {
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+            
+            // --- 1. Load Font ---
+            try {
+                const fontUrl = "https://unpkg.com/roboto-font@0.1.0/fonts/Roboto/roboto-regular-webfont.ttf";
+                const res = await fetch(fontUrl);
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const base64Font = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(blob);
+                    });
+                    doc.addFileToVFS('Roboto-Regular.ttf', base64Font as string);
+                    doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+                    doc.addFont('Roboto-Regular.ttf', 'Roboto', 'bold');
+                    doc.setFont('Roboto');
+                }
+            } catch(e) { console.warn("Font error", e); }
+
+            const pageWidth = doc.internal.pageSize.getWidth();
+            let currentY = 40;
+
+            doc.setFont('Roboto', 'bold');
+            doc.setFontSize(16);
+            doc.text("DANH SÁCH ĐƠN HÀNG", 30, currentY);
+            currentY += 20;
+            
+            doc.setFont('Roboto', 'normal');
+            doc.setFontSize(10);
+            doc.text(`KHÁCH HÀNG: ${(client || "Tất cả").toUpperCase()}`, 30, currentY);
+            doc.text(`Ngày in: ${new Date().toLocaleDateString("vi-VN")}`, pageWidth - 30, currentY, { align: "right" });
+            currentY += 30;
+
+            // Determine active sizes
+            let activeSizes = entrySizes.filter(s => {
+                return filteredRows.some(row => (parseFloat(String(row[sizeToCol(s)])) || 0) > 0);
+            });
+            if (activeSizes.length === 0 && entrySizes.length > 0) activeSizes = [entrySizes[0]];
+
+            const head = [[
+                "STT", "ĐƠN HÀNG", "ARTICLE", "MODEL NAME", "SẢN PHẨM", "ĐỢT", "TỔNG", ...activeSizes.map(String)
+            ]];
+
+            const body = filteredRows.map((row, i) => [
+                i + 1,
+                row.ry_number || "",
+                row.article || "",
+                row.model_name || "",
+                row.product || "",
+                row.delivery_round || "",
+                entrySizes.reduce((sum, s) => sum + (Number(row[sizeToCol(s)]) || 0), 0),
+                ...activeSizes.map(s => row[sizeToCol(s)] || "-")
+            ]);
+
+            autoTable(doc, {
+                startY: currentY,
+                head: head,
+                body: body,
+                theme: 'grid',
+                tableWidth: 'wrap', // Fit content
+                styles: { font: 'Roboto', fontSize: activeSizes.length > 12 ? 7 : 8, cellPadding: 3, valign: 'middle', halign: 'center' },
+                headStyles: { fillColor: [241, 245, 249], textColor: [0, 0, 0], fontStyle: 'bold' },
+                margin: { left: 30, right: 30 },
+            });
+
+            doc.save(`Danh_Sach_Don_Hang_${(client || "All").replace(/\s+/g, '_')}.pdf`);
+        } catch (error: any) {
+            console.error("PDF Export error:", error);
+            alert("Lỗi xuất PDF: " + error.message);
+        }
+    };
+
     if (!mounted) return <div className="bg-slate-50 min-h-screen" />;
 
     return (
@@ -250,14 +331,23 @@ export default function ClientOrdersPage() {
                         }}
                     />
 
+                    <button
+                        onClick={exportPdf}
+                        className="flex items-center justify-center text-rose-600 hover:text-rose-700 transition-all shrink-0 ml-1"
+                        title="Xuất PDF"
+                        disabled={!client || rows.length === 0}
+                    >
+                        <FaFilePdf size={28} className="cursor-pointer" />
+                    </button>
+
                 </div>
 
                 <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 touch-pan-x overscroll-x-contain report-scrollbar">
-                    <table className="border-collapse text-sm w-max min-w-full table-fixed">
+                    <table className="border-collapse text-sm w-max min-w-full table-auto report-scrollbar">
                         <thead className="sticky top-0 z-40 bg-slate-100 text-slate-600">
                             <tr className="border-b border-slate-200">
-                                <th className="sticky left-0 z-50 bg-slate-100 px-3 py-3 text-center font-bold text-slate-800 w-12 border-r border-slate-100 shadow-[inset_-1px_0_0_0_#f1f5f9]">STT</th>
-                                <th className="sticky left-12 z-50 bg-slate-100 px-3 py-3 text-center font-bold text-slate-800 w-40 border-r border-slate-100 shadow-[inset_-1px_0_0_0_#f1f5f9]">ĐƠN HÀNG (RY)</th>
+                                <th className="sticky left-0 z-50 bg-slate-100 px-3 py-3 text-center font-bold text-slate-800 w-12 border-r border-transparent shadow-[inset_-1px_0_0_0_#e2e8f0]">STT</th>
+                                <th className="sticky left-12 z-50 bg-slate-100 px-3 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-transparent shadow-[inset_-1px_0_0_0_#e2e8f0]">ĐƠN HÀNG (RY)</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">ARTICLE</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">MODEL NAME</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">SẢN PHẨM</th>
@@ -275,8 +365,8 @@ export default function ClientOrdersPage() {
                                 const rowBg = idx % 2 === 0 ? "bg-white" : "bg-slate-50";
                                 return (
                                     <tr key={row.ry_number || idx} className={`${rowBg} hover:bg-blue-50/50 transition-colors border-b border-slate-100 last:border-0`}>
-                                        <td className={`sticky left-0 z-20 ${rowBg} px-3 py-2 text-center font-bold border-r border-slate-100 shadow-[inset_-1px_0_0_0_#f1f5f9]`}>{idx + 1}</td>
-                                        <td className={`sticky left-12 z-20 ${rowBg} px-3 py-2 text-center font-bold text-emerald-700 border-r border-slate-100 shadow-[inset_-1px_0_0_0_#f1f5f9]`}>{row.ry_number}</td>
+                                        <td className={`sticky left-0 z-20 ${rowBg} px-3 py-2 text-center font-bold border-r border-transparent shadow-[inset_-1px_0_0_0_#e2e8f0]`}>{idx + 1}</td>
+                                        <td className={`sticky left-12 z-20 ${rowBg} px-3 py-2 text-center font-bold text-emerald-700 whitespace-nowrap border-r border-transparent shadow-[inset_-1px_0_0_0_#e2e8f0]`}>{row.ry_number}</td>
                                         <td className="px-4 py-2 text-center font-bold text-blue-700 whitespace-nowrap border-r border-slate-100">{row.article || "-"}</td>
                                         <td className="px-4 py-2 text-center font-medium whitespace-nowrap border-r border-slate-100">{row.model_name || "-"}</td>
                                         <td className="px-4 py-2 text-center font-medium whitespace-nowrap border-r border-slate-100">{row.product || "-"}</td>
