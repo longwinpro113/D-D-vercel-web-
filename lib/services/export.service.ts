@@ -177,13 +177,57 @@ export class ExportService {
   }
 
   static async getRemainingStock(query: Record<string, string>) {
+    const isDetailed = query.detailed === "true";
     const orderFilter = this.buildRemainingOrderFilter(query);
     const exportFilter = this.buildRemainingExportFilter(query);
 
     const [orders, exportsData] = await Promise.all([
       ExportModel.getRemainingBaseOrders(orderFilter.whereSQL, orderFilter.params),
-      ExportModel.getTotalsGroupedByRy(exportFilter.whereSQL, exportFilter.params),
+      isDetailed 
+        ? ExportModel.getFiltered(exportFilter.whereSQL, exportFilter.params)
+        : ExportModel.getTotalsGroupedByRy(exportFilter.whereSQL, exportFilter.params),
     ]);
+
+    if (isDetailed) {
+      const exportGrouped = new Map<string, any[]>();
+      (exportsData as any[]).forEach((exp) => {
+        const ry = exp.ry_number;
+        if (!exportGrouped.has(ry)) exportGrouped.set(ry, []);
+        exportGrouped.get(ry)!.push(exp);
+      });
+
+      return (orders as RemainingOrderRow[]).map((order) => {
+        const orderExports = exportGrouped.get(order.ry_number) || [];
+        const totalQuantity = toNumber(order.total_order_qty);
+        
+        const result: any = {
+          ...order,
+          exports: orderExports,
+          remaining: {
+            ry_number: order.ry_number,
+            total_quantity: totalQuantity,
+            accumulated_total: 0,
+            remaining_quantity: totalQuantity,
+          }
+        };
+
+        let totalShipped = 0;
+        orderExports.forEach(exp => {
+           totalShipped += toNumber(exp.shipped_quantity);
+        });
+        result.remaining.accumulated_total = totalShipped;
+        result.remaining.remaining_quantity = totalQuantity - totalShipped;
+
+        sizeColumns.forEach((column) => {
+          const orderValue = toNumber(order[column]);
+          const exportedValue = orderExports.reduce((sum, exp) => sum + toNumber(exp[column]), 0);
+          result.remaining[column] = orderValue - exportedValue;
+          result.remaining[`o${column}`] = orderValue;
+        });
+
+        return result;
+      });
+    }
 
     const exportMap = new Map<string, ExportTotalsRow>(
       (exportsData as ExportTotalsRow[]).map((item) => [item.ry_number || "", item])

@@ -9,16 +9,21 @@ import { Snackbar, Alert } from "@mui/material";
 import { ChevronDown, Printer, FileSpreadsheet, Search } from "lucide-react";
 
 type RemainingRow = {
-    id: string | number;
     ry_number: string;
     article?: string | null;
     model_name?: string | null;
     product?: string | null;
     delivery_round?: string | null;
-    total_quantity?: number | null;
-    accumulated_total?: number | null;
-    remaining_quantity?: number | null;
-    [key: string]: string | number | null | undefined;
+    total_order_qty?: number | null;
+    [key: string]: any;
+    exports: any[];
+    remaining: {
+        ry_number: string;
+        total_quantity: number;
+        accumulated_total: number;
+        remaining_quantity: number;
+        [key: string]: any;
+    };
 };
 
 const autocompletePopupIcon = <ChevronDown size={16} />;
@@ -67,7 +72,7 @@ export default function RemainingReportPage() {
             return;
         }
         try {
-            const res = await axios.get(`/api/remaining-stock?client=${encodeURIComponent(clientName)}`);
+            const res = await axios.get(`/api/remaining-stock?client=${encodeURIComponent(clientName)}&detailed=true`);
             const data = Array.isArray(res.data) ? (res.data as RemainingRow[]) : [];
             setRows(data);
             setOrders(data);
@@ -203,61 +208,141 @@ export default function RemainingReportPage() {
                     <table className="border-collapse text-sm w-max min-w-full table-fixed">
                         <thead className="sticky top-0 z-40 bg-slate-100 text-slate-600">
                             <tr className="border-b border-slate-200">
-                                <th className="sticky left-0 z-50 bg-slate-100 px-3 py-3 text-center font-bold text-slate-800 w-12 border-r border-slate-100 shadow-[inset_-1px_0_0_0_#f1f5f9]">STT</th>
-                                <th className="sticky left-12 z-50 bg-slate-100 px-3 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100 shadow-[inset_-1px_0_0_0_#f1f5f9]">ĐƠN HÀNG (RY)</th>
+                                <th className="sticky left-0 z-50 bg-slate-100 px-3 py-3 text-center font-bold text-slate-800 border-r border-slate-200" style={{ width: "48px", minWidth: "48px" }}>STT</th>
+                                <th className="sticky z-50 bg-slate-100 px-3 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-200 shadow-[inset_-1px_0_0_0_#e2e8f0]" style={{ left: "48px" }}>LỆNH (RY)</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">ARTICLE</th>
+                                <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">ĐỢT HÀNG</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">MODEL NAME</th>
-                                <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">PRODUCT</th>
-                                <th className="bg-slate-200 px-4 py-3 text-center font-bold text-blue-800 whitespace-nowrap border-r border-slate-100">TỔNG SL</th>
-                                <th className="bg-slate-200 px-4 py-3 text-center font-bold text-purple-800 whitespace-nowrap border-r border-slate-100">ĐÃ GIAO</th>
-                                <th className="bg-slate-200 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">CÒN LẠI</th>
-                                <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">TRẠNG THÁI</th>
+                                <th className="bg-slate-200 px-4 py-3 text-center font-bold text-blue-800 whitespace-nowrap border-r border-slate-100">SỐ LƯỢNG DH</th>
+                                <th className="bg-slate-200 px-4 py-3 text-center font-bold text-purple-800 whitespace-nowrap border-r border-slate-100">SL ĐÃ GIAO</th>
+                                <th className="bg-slate-200 px-4 py-3 text-center font-bold text-rose-800 whitespace-nowrap border-r border-slate-100">SL CHƯA GIAO</th>
+                                <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">NGÀY GIAO</th>
                                 {sizes.map((s) => (
                                     <th key={s} className="bg-slate-100 px-1 py-3 text-center font-bold text-slate-800 w-12 border border-white">{s}</th>
                                 ))}
+                                <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-l border-slate-100">TỔNG</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredRows.map((row, idx) => {
-                                const rowBg = idx % 2 === 0 ? "bg-white" : "bg-slate-50";
-                                return (
-                                    <tr key={idx} className={`${rowBg} hover:bg-blue-50/50 transition-colors border-b border-slate-100`}>
-                                        <td className={`sticky left-0 z-20 ${rowBg} px-3 py-2 text-center font-bold border-r border-slate-100 shadow-[inset_-1px_0_0_0_#f1f5f9]`}>{idx + 1}</td>
-                                        <td className={`sticky left-12 z-20 ${rowBg} px-3 py-2 text-center font-bold text-emerald-700 whitespace-nowrap border-r border-slate-100 shadow-[inset_-1px_0_0_0_#f1f5f9]`}>{row.ry_number}</td>
-                                        <td className="px-4 py-2 text-center font-bold text-blue-700 whitespace-nowrap border-r border-slate-100">{row.article || "-"}</td>
-                                        <td className="px-4 py-2 text-center font-medium whitespace-nowrap border-r border-slate-100">{row.model_name || "-"}</td>
-                                        <td className="px-4 py-2 text-center font-medium whitespace-nowrap border-r border-slate-100">{row.product || "-"}</td>
-                                        <td className="px-4 py-2 text-center font-bold text-blue-700 whitespace-nowrap border-r border-slate-100 bg-blue-50/20">{row.total_quantity || 0}</td>
-                                        <td className="px-4 py-2 text-center font-bold text-purple-700 whitespace-nowrap border-r border-slate-100 bg-purple-50/20">{row.accumulated_total || 0}</td>
-                                        <td className={`px-4 py-2 text-center font-bold whitespace-nowrap border-r border-slate-100 bg-slate-50 ${(row.remaining_quantity ?? 0) === 0 ? "text-emerald-600" : "text-rose-600"}`}>{row.remaining_quantity || 0}</td>
-                                        <td className={`px-0 py-0 border-r border-slate-100 whitespace-nowrap text-center align-middle ${(row.remaining_quantity || 0) === 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-[#fee2e2] text-rose-600'}`}>
-                                            <div className="w-full h-full min-h-9 flex items-center justify-center font-bold text-[11px]">
-                                                {(row.remaining_quantity || 0) === 0 ? "OK" : "NOT OK"}
-                                            </div>
-                                        </td>
-                                        {sizes.map((s) => {
-                                            const col = sizeToCol(s);
-                                            const originalVal = row[`o${col}`];
-                                            const remainingVal = row[col];
+                            {filteredRows.map((row, orderIdx) => {
+                                const exports = row.exports || [];
+                                const remaining = row.remaining;
 
-                                            if (originalVal === null || originalVal === undefined || Number(originalVal) === 0) {
+                                // Generate a unique light color for each group using HSL
+                                const hue = (orderIdx * 137.5) % 360; // Golden angle for even distribution
+                                const currentBg = `hsl(${hue}, 80%, 97%)`;
+                                const hoverBg = `hsl(${hue}, 80%, 94%)`;
+
+                                return (
+                                    <React.Fragment key={row.ry_number}>
+                                        {/* Row Đơn Hàng (Order Row) */}
+                                        <tr className="hover:opacity-95 transition-opacity border-b border-slate-200/60" style={{ backgroundColor: currentBg }}>
+                                            <td className="sticky left-0 z-20 px-3 py-2 text-center font-bold shadow-[inset_-1px_0_0_0_#cbd5e1]" style={{ width: "48px", minWidth: "48px", backgroundColor: currentBg }}>{orderIdx + 1}</td>
+                                            <td className="sticky z-20 px-3 py-2 text-center font-bold text-emerald-800 whitespace-nowrap shadow-[inset_-1px_0_0_0_#cbd5e1]" style={{ left: "48px", backgroundColor: currentBg }}>{row.ry_number}</td>
+                                            <td className="px-4 py-2 text-center font-bold text-blue-800 whitespace-nowrap border-r border-slate-200/60">{row.article || "-"}</td>
+                                            <td className="px-4 py-2 text-center font-medium whitespace-nowrap border-r border-slate-200/60">{row.delivery_round || "-"}</td>
+                                            <td className="px-4 py-2 text-center font-medium whitespace-nowrap border-r border-slate-200/60">{row.model_name || "-"}</td>
+                                            <td className="px-4 py-2 text-center font-bold text-blue-800 whitespace-nowrap border-r border-slate-200/60 bg-blue-100/10">{row.total_order_qty || 0}</td>
+                                            <td className="px-4 py-2 text-center font-bold text-purple-800 whitespace-nowrap border-r border-slate-200/60 bg-purple-100/10">{remaining.accumulated_total || 0}</td>
+                                            <td className={`px-4 py-2 text-center font-bold whitespace-nowrap border-r border-slate-200/60 ${remaining.remaining_quantity === 0 ? "text-emerald-700" : "text-rose-700"}`}>{remaining.remaining_quantity || 0}</td>
+                                            <td className="px-4 py-2 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-200/60 bg-black/5 italic">ĐƠN HÀNG</td>
+                                            {sizes.map((s) => {
+                                                const col = sizeToCol(s);
+                                                const val = row[col];
+                                                const hasVal = val !== null && val !== undefined && Number(val) !== 0;
                                                 return (
-                                                    <td key={s} className="px-1 py-1 text-center font-bold border border-white bg-[#e2e8f0] text-transparent select-none">
+                                                    <td key={s} className={`px-1 py-1 text-center font-bold border border-slate-200/50 ${hasVal ? "bg-white text-blue-700" : "bg-[#f8fafc] text-transparent select-none"}`}>
+                                                        {hasVal ? val : ""}
                                                     </td>
                                                 );
-                                            }
+                                            })}
+                                            <td className="px-4 py-2 text-center font-bold text-blue-800 bg-blue-100/10 border-l border-slate-200/60">{row.total_order_qty || 0}</td>
+                                        </tr>
 
-                                            const isZero = Number(remainingVal) === 0;
-                                            return (
-                                                <td key={s} className={`px-1 py-1 text-center font-bold border border-slate-200 ${isZero ? "bg-emerald-50 text-emerald-600" : "bg-white text-rose-600"}`}>
-                                                    {isZero ? "OK" : remainingVal}
-                                                </td>
-                                            );
-                                        })}
-                                    </tr>
+                                        {/* Rows Ngày Giao (Export Rows) */}
+                                        {exports.map((exp: any, expIdx: number) => (
+                                            <tr key={exp.id} className="hover:opacity-95 transition-opacity border-b border-slate-100/60 italic" style={{ backgroundColor: currentBg }}>
+                                                <td className="sticky left-0 z-20 shadow-[inset_-1px_0_0_0_#cbd5e1]" style={{ width: "48px", minWidth: "48px", backgroundColor: currentBg }}></td>
+                                                <td className="sticky z-20 shadow-[inset_-1px_0_0_0_#cbd5e1]" style={{ left: "48px", backgroundColor: currentBg }}></td>
+                                                <td className="border-r border-slate-200/60"></td>
+                                                <td className="border-r border-slate-200/60"></td>
+                                                <td className="border-r border-slate-200/60"></td>
+                                                <td className="border-r border-slate-200/60"></td>
+                                                <td className="border-r border-slate-200/60"></td>
+                                                <td className="border-r border-slate-200/60"></td>
+                                                <td className="px-4 py-1 text-center text-slate-600 font-medium border-r border-slate-200/60 bg-white/20">{exp.export_date}</td>
+                                                {sizes.map((s) => {
+                                                    const col = sizeToCol(s);
+                                                    const val = exp[col];
+                                                    const hasVal = val !== null && val !== undefined && Number(val) !== 0;
+                                                    return (
+                                                        <td key={s} className={`px-1 py-1 text-center font-medium border border-slate-200/50 ${hasVal ? "bg-white text-slate-700" : "bg-[#f8fafc] text-transparent select-none"}`}>
+                                                            {hasVal ? val : ""}
+                                                        </td>
+                                                    );
+                                                })}
+                                                <td className="px-4 py-1 text-center font-bold text-slate-700 border-l border-slate-200/60">{exp.shipped_quantity || 0}</td>
+                                            </tr>
+                                        ))}
+
+                                        {/* Row Còn Lại (Summary Row) */}
+                                        <tr className="font-bold border-b border-slate-300/60" style={{ backgroundColor: currentBg }}>
+                                            <td className="sticky left-0 z-20 shadow-[inset_-1px_0_0_0_#cbd5e1]" style={{ width: "48px", minWidth: "48px", backgroundColor: currentBg }}></td>
+                                            <td className="sticky z-20 shadow-[inset_-1px_0_0_0_#cbd5e1]" style={{ left: "48px", backgroundColor: currentBg }}></td>
+                                            <td className="border-r border-slate-200/60"></td>
+                                            <td className="border-r border-slate-200/60"></td>
+                                            <td className="border-r border-slate-200/60"></td>
+                                            <td className="border-r border-slate-200/60"></td>
+                                            <td className="border-r border-slate-200/60"></td>
+                                            <td className="border-r border-slate-200/60"></td>
+                                            <td className="px-4 py-2 text-center text-rose-700 border-r border-slate-200/60 bg-rose-500/10">CÒN LẠI</td>
+                                            {sizes.map((s) => {
+                                                const col = sizeToCol(s);
+                                                const originalVal = row[col];
+                                                const remainingVal = remaining[col];
+                                                const hasOriginal = originalVal !== null && originalVal !== undefined && Number(originalVal) !== 0;
+
+                                                if (!hasOriginal) {
+                                                    return <td key={s} className="px-1 py-1 bg-[#f8fafc] border border-slate-200/50"></td>;
+                                                }
+
+                                                const isZero = Number(remainingVal) <= 0;
+                                                return (
+                                                    <td key={s} className={`px-1 py-1 text-center font-bold border border-slate-200/50 ${isZero ? "bg-emerald-500/10 text-emerald-600" : "bg-white text-rose-600"}`}>
+                                                        {isZero ? "OK" : remainingVal}
+                                                    </td>
+                                                );
+                                            })}
+                                            <td className="px-4 py-2 text-center font-bold text-rose-700 border-l border-slate-200/60">{remaining.remaining_quantity || 0}</td>
+                                        </tr>
+                                    </React.Fragment>
                                 );
                             })}
                         </tbody>
+                        <tfoot className="sticky bottom-0 z-40 bg-yellow-400 font-bold text-slate-900 shadow-[0_-2px_4px_rgba(0,0,0,0.1)]">
+                            <tr>
+                                <td colSpan={2} className="sticky left-0 z-50 bg-yellow-400 px-3 py-3 text-center border-r border-yellow-500 shadow-[inset_-1px_0_0_0_#eab308]" style={{ width: "100px", minWidth: "100px" }}>TỔNG</td>
+                                <td className="px-4 py-3 text-center border-r border-yellow-500"></td>
+                                <td className="px-4 py-3 text-center border-r border-yellow-500"></td>
+                                <td className="px-4 py-3 text-center border-r border-yellow-500"></td>
+                                <td className="px-4 py-3 text-center border-r border-yellow-500 bg-yellow-500/30">
+                                    {filteredRows.reduce((sum, r) => sum + (Number(r.total_order_qty) || 0), 0).toLocaleString()}
+                                </td>
+                                <td className="px-4 py-3 text-center border-r border-yellow-500 bg-yellow-500/30">
+                                    {filteredRows.reduce((sum, r) => sum + (Number(r.remaining?.accumulated_total) || 0), 0).toLocaleString()}
+                                </td>
+                                <td className="px-4 py-3 text-center border-r border-yellow-500 bg-yellow-500/30">
+                                    {filteredRows.reduce((sum, r) => sum + (Number(r.remaining?.remaining_quantity) || 0), 0).toLocaleString()}
+                                </td>
+                                <td className="px-4 py-3 text-center border-r border-yellow-500 bg-yellow-500/10 italic">TOTAL</td>
+                                {sizes.map((s) => (
+                                    <td key={s} className="px-1 py-3 text-center border border-yellow-500"></td>
+                                ))}
+                                <td className="px-4 py-3 text-center border-l border-yellow-500 bg-yellow-500/30">
+                                    {filteredRows.reduce((sum, r) => sum + (Number(r.remaining?.remaining_quantity) || 0), 0).toLocaleString()}
+                                </td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
