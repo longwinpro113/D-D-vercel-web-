@@ -408,7 +408,7 @@ export default function DailyReportPage() {
     if (!isMounted) return null;
 
     return (
-        <div className="mx-auto flex h-[calc(100dvh-80px)] min-h-[calc(100dvh-80px)] w-full flex-col gap-4 p-4 lg:p-6 overflow-hidden bg-slate-50 text-[13px]">
+        <div className="mx-auto flex h-[calc(100dvh-80px)] min-h-[calc(100dvh-80px)] w-full flex-col gap-4 p-4 lg:p-6 overflow-hidden bg-slate-50 text-[14px]">
             <style jsx global>{`
                 input[type='number']::-webkit-inner-spin-button,
                 input[type='number']::-webkit-outer-spin-button {
@@ -579,57 +579,59 @@ export default function DailyReportPage() {
                 </div>
 
                 <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 touch-pan-x overscroll-x-contain report-scrollbar print:border-0 print:overflow-visible">
-                    <table className="border-collapse text-sm w-max min-w-full table-auto">
+                    <table className="border-separate border-spacing-0 text-[14px] w-max min-w-full table-auto">
                         <thead className="sticky top-0 z-40 bg-slate-100">
-                            <tr className="border-b border-slate-200">
-                                <th className="md:sticky md:left-0 top-0 z-50 bg-slate-100 shadow-[inset_-1px_0_0_0_#e2e8f0] px-2 py-3 text-center font-bold text-slate-700 w-12 border-r border-transparent">STT</th>
-                                <th className="md:sticky md:left-12 top-0 z-50 bg-slate-100 shadow-[inset_-1px_0_0_0_#e2e8f0] px-3 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-r border-transparent">Đơn Hàng</th>
-                                <th className="top-0 border-r border-slate-100 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap">Đợt</th>
-                                <th className="top-0 border-r border-slate-100 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap">Article</th>
-                                <th className="top-0 border-r border-slate-100 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap">Model Name</th>
-                                <th className="top-0 border-r border-slate-100 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap">Product</th>
-                                <th className="top-0 border-r border-slate-100 bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap">SL Đơn Hàng</th>
-                                <th className="top-0 border-r border-slate-100 bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap">SL Tích Lũy</th>
-                                <th className="top-0 border-r border-slate-100 bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap">SL Ngày</th>
-                                <th className="top-0 border-r border-slate-100 bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap">SL Còn Lại</th>
-                                <th className="top-0 border-r border-slate-100 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap">Trạng Thái</th>
+                            <tr className="">
+                                <th className="md:sticky md:left-0 top-0 z-50 bg-slate-100 shadow-[inset_-1px_-1px_0_0_#e2e8f0] px-2 py-3 text-center font-bold text-slate-700 w-12">STT</th>
+                                <th className="md:sticky md:left-[48px] top-0 z-50 bg-slate-100 shadow-[inset_-1px_-1px_0_0_#e2e8f0] px-3 py-3 text-center font-bold text-slate-700 whitespace-nowrap">Đơn Hàng</th>
+                                <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Đợt</th>
+                                <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Article</th>
+                                <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Model Name</th>
+                                <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Product</th>
+                                <th className="md:sticky top-0 bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Đơn Hàng</th>
+                                <th className="md:sticky top-0 bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Tích Lũy</th>
+                                <th className="md:sticky top-0 bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Ngày</th>
+                                <th className="md:sticky top-0 bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Còn Lại</th>
+                                <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Trạng Thái</th>
                                 {entrySizes.map((s) => (
-                                    <th key={s} className="top-0 bg-slate-100 border-r px-1 py-3 text-center font-bold text-slate-800 w-11 border border-white">{s}</th>
+                                    <th key={s} className="md:sticky top-0 bg-slate-100 border-b border-r border-slate-200 px-1 py-3 text-center font-bold text-slate-800 w-11">{s}</th>
                                 ))}
-                                <th className="md:sticky md:right-0 top-0 z-40 bg-slate-100 border-l border-slate-100 px-3 py-3 text-center font-bold text-slate-700 w-24 print:hidden">Actions</th>
+                                <th className="md:sticky md:right-0 top-0 z-40 bg-slate-100 border-b border-l border-slate-200 px-3 py-3 text-center font-bold text-slate-700 w-24 print:hidden">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {grouped.map((group) => (
                                 <React.Fragment key={group.date}>
-                                    <tr className="md:sticky top-[45px] z-30">
-                                        <td colSpan={11 + entrySizes.length + 1} className="px-4 py-2 font-bold text-blue-600 text-left border-y border-slate-100 uppercase tracking-wider text-[11px] bg-[#f8fafc] md:sticky md:left-0">
+                                    <tr className="">
+                                        <td className="sticky top-[44px] left-0 z-30 bg-[#f8fafc] border-b border-slate-100 h-10 shadow-[inset_-1px_0_0_0_#e2e8f0]"></td>
+                                        <td className="sticky top-[44px] left-[48px] z-30 bg-[#f8fafc] border-b border-slate-100 h-10 shadow-[inset_-1px_0_0_0_#e2e8f0] px-3 py-2 text-center font-bold text-blue-600 uppercase tracking-wider text-[13px] whitespace-nowrap">
                                             {group.date}
                                         </td>
+                                        <td colSpan={9 + entrySizes.length + 1} className="sticky top-[44px] z-20 bg-[#f8fafc] border-b border-slate-100 px-4 py-2"></td>
                                     </tr>
                                     {group.rows.map((row, index) => {
                                         const status = (row.remaining_quantity ?? 0) === 0 ? "Ok" : "Not Ok";
                                         const rowBg = index % 2 === 0 ? "bg-white" : "bg-slate-50";
                                         return (
-                                            <tr key={row.id} className={`${rowBg} hover:bg-blue-50/20 transition-colors group border-b border-slate-100 last:border-0`}>
-                                                <td className={`md:sticky md:left-0 z-20 shadow-[inset_-1px_0_0_0_#e2e8f0] px-3 py-2.5 font-bold text-slate-800 text-center whitespace-nowrap ${rowBg} group-hover:bg-blue-50 border-r border-transparent`}>
+                                            <tr key={row.id} className={`${rowBg} hover:bg-blue-50/20 transition-colors group`}>
+                                                <td className={`md:sticky md:left-0 z-10 shadow-[inset_-1px_-1px_0_0_#e2e8f0] px-3 py-2.5 font-bold text-slate-800 text-center whitespace-nowrap ${rowBg} group-hover:bg-blue-50`}>
                                                     {index + 1}
                                                 </td>
-                                                <td className={`md:sticky md:left-12 z-20 shadow-[inset_-1px_0_0_0_#e2e8f0] px-3 py-2.5 font-bold text-slate-900 text-center whitespace-nowrap ${rowBg} group-hover:bg-blue-50 border-r border-transparent`}>
+                                                <td className={`md:sticky md:left-[48px] z-10 shadow-[inset_-1px_-1px_0_0_#e2e8f0] px-3 py-2.5 font-bold text-slate-900 text-center whitespace-nowrap ${rowBg} group-hover:bg-blue-50`}>
                                                     {row.ry_number}
                                                 </td>
-                                                <td className="border-r border-slate-100 px-3 py-2.5 font-bold text-orange-600 text-center whitespace-nowrap">{row.delivery_round || "-"}</td>
-                                                <td className="border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.article || "-"}</td>
-                                                <td className="border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.model_name || "-"}</td>
-                                                <td className="border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.product || "-"}</td>
-                                                <td className="border-r border-slate-100 px-3 py-2.5 font-bold text-[#3b82f6] text-center whitespace-nowrap">{row.total_quantity || 0}</td>
-                                                <td className="border-r border-slate-100 px-3 py-2.5 font-bold text-[#a855f7] text-center whitespace-nowrap">{row.accumulated_total || 0}</td>
-                                                <td className="border-r border-slate-100 px-3 py-2.5 font-bold text-[#0284c7] text-center whitespace-nowrap">{row.shipped_quantity || 0}</td>
-                                                <td className={`border-r border-slate-100 px-3 py-2.5 font-bold text-center whitespace-nowrap ${row.remaining_quantity === 0 ? "text-[#16a34a]" : "text-[#ef4444]"}`}>
+                                                <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-orange-600 text-center whitespace-nowrap">{row.delivery_round || "-"}</td>
+                                                <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.article || "-"}</td>
+                                                <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.model_name || "-"}</td>
+                                                <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.product || "-"}</td>
+                                                <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#3b82f6] text-center whitespace-nowrap">{row.total_quantity || 0}</td>
+                                                <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#a855f7] text-center whitespace-nowrap">{row.accumulated_total || 0}</td>
+                                                <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#0284c7] text-center whitespace-nowrap">{row.shipped_quantity || 0}</td>
+                                                <td className={`border-b border-r border-slate-100 px-3 py-2.5 font-bold text-center whitespace-nowrap ${row.remaining_quantity === 0 ? "text-[#16a34a]" : "text-[#ef4444]"}`}>
                                                     {row.remaining_quantity || 0}
                                                 </td>
-                                                <td className={`px-0 py-0 border-r border-slate-100 whitespace-nowrap text-center align-middle ${status === 'Ok' ? 'bg-emerald-50 text-emerald-600' : 'bg-[#fee2e2] text-rose-600'}`}>
-                                                    <div className="w-full h-full min-h-[44px] flex items-center justify-center font-bold text-[12px] whitespace-nowrap">
+                                                <td className={`px-0 py-0 border-b border-r border-slate-100 whitespace-nowrap text-center align-middle ${status === 'Ok' ? 'bg-emerald-50 text-emerald-600' : 'bg-[#fee2e2] text-rose-600'}`}>
+                                                    <div className="w-full h-full min-h-[44px] flex items-center justify-center font-bold text-[13px] whitespace-nowrap">
                                                         {status}
                                                     </div>
                                                 </td>
