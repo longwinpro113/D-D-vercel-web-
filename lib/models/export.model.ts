@@ -6,8 +6,8 @@ import { sizeColumns } from "./order.model";
 const DB_COLLATION = "utf8mb4_unicode_ci";
 const RY_NUMBER_COLLATION = DB_COLLATION;
 
-export const EXPORT_INSERT_COLUMNS = ["export_date", "client", "ry_number", "delivery_round", ...sizeColumns, "note"];
-export const EXPORT_UPDATE_COLUMNS = ["export_date", "client", "delivery_round", ...sizeColumns, "note"];
+export const EXPORT_INSERT_COLUMNS = ["export_date", "client", "ry_number", "delivery_round", "shipped_quantity", ...sizeColumns, "note"];
+export const EXPORT_UPDATE_COLUMNS = ["export_date", "client", "delivery_round", "shipped_quantity", ...sizeColumns, "note"];
 
 export class ExportModel {
   static async createRecord(data: Record<string, DbValue>) {
@@ -35,7 +35,7 @@ export class ExportModel {
 
   static async getById(id: string | number) {
     const [rows] = await db.query<RowDataPacket[]>(
-      "SELECT id, ry_number, export_date, note FROM export WHERE id = ? LIMIT 1",
+      `SELECT id, ry_number, export_date, delivery_round, shipped_quantity, note, ${sizeColumns.join(", ")} FROM export WHERE id = ? LIMIT 1`,
       [id]
     );
     return rows[0] || null;
@@ -47,7 +47,7 @@ export class ExportModel {
 
   static async getByRyNumber(ryNumber: string) {
     const [rows] = await db.query(
-      "SELECT id, shipped_quantity FROM export WHERE ry_number = ? ORDER BY export_date ASC, id ASC",
+      `SELECT id, shipped_quantity, ${sizeColumns.join(", ")} FROM export WHERE ry_number = ? ORDER BY export_date ASC, id ASC`,
       [ryNumber]
     );
     return rows;
@@ -67,7 +67,7 @@ export class ExportModel {
         DATE_FORMAT(e.export_date, '%d/%m/%Y') AS export_date,
         e.ry_number,
         COALESCE(e.delivery_round, o.delivery_round) AS delivery_round,
-        e.shipped_quantity,
+        (${sizeColumns.map((c) => `e.${c}`).join(" + ")}) AS shipped_quantity,
         e.remaining_quantity,
         e.accumulated_total,
         e.updated_at,

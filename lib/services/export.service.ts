@@ -21,7 +21,8 @@ type ExportTotalsRow = {
   [key: string]: string | number | null | undefined;
 };
 
-function toNumber(value: string | number | null | undefined) {
+function toNumber(value: DbValue) {
+  if (typeof value === "boolean") return value ? 1 : 0;
   return Number(value) || 0;
 }
 
@@ -149,8 +150,10 @@ export class ExportService {
     const exports = await ExportModel.getByRyNumber(ryNumber);
 
     let runningTotal = 0;
-    for (const row of exports as Array<{ id: string | number; shipped_quantity?: string | number | null }>) {
-      runningTotal += toNumber(row.shipped_quantity);
+    for (const row of exports as Array<{ id: string | number; [key: string]: any }>) {
+      // Robust calculation by summing sizes
+      const rowTotal = sizeColumns.reduce((sum, col) => sum + toNumber(row[col]), 0);
+      runningTotal += rowTotal;
       const remaining = totalOrderQuantity - runningTotal;
       await ExportModel.updateTotals(row.id, runningTotal, remaining);
     }
@@ -158,13 +161,18 @@ export class ExportService {
 
   static async createExport(data: Record<string, DbValue>) {
     const payload: Record<string, DbValue> = {};
+    
+    // Calculate shipped_quantity
+    const totalShipped = sizeColumns.reduce((sum, col) => sum + toNumber(data[col]), 0);
+    data.shipped_quantity = totalShipped;
+
     EXPORT_INSERT_COLUMNS.forEach((column) => {
       payload[column] = data[column] ?? (sizeColumns.includes(column) ? 0 : null);
     });
     
     // Default values
-      payload.delivery_round = data.delivery_round ?? null;
-      payload.note = data.note ?? null;
+    payload.delivery_round = data.delivery_round ?? null;
+    payload.note = data.note ?? null;
 
     const result = await ExportModel.createRecord(payload);
     await this.recalculateTotals(String(data.ry_number ?? ""));
@@ -213,7 +221,9 @@ export class ExportService {
 
         let totalShipped = 0;
         orderExports.forEach(exp => {
-           totalShipped += toNumber(exp.shipped_quantity);
+           // Calculate total for this export on the fly for robustness
+           const rowTotal = sizeColumns.reduce((sum, col) => sum + toNumber(exp[col]), 0);
+           totalShipped += rowTotal;
         });
         result.remaining.accumulated_total = totalShipped;
         result.remaining.remaining_quantity = totalQuantity - totalShipped;
@@ -236,7 +246,9 @@ export class ExportService {
     return (orders as RemainingOrderRow[]).map((order) => {
       const exported = exportMap.get(order.ry_number) || {};
       const totalQuantity = toNumber(order.total_order_qty);
-      const totalShipped = toNumber(exported.total_shipped);
+      
+      // Calculate totalShipped by summing all size columns from the exported totals
+      const totalShipped = sizeColumns.reduce((sum, col) => sum + toNumber(exported[col]), 0);
 
       const result: Record<string, string | number | null | undefined> = {
         ry_number: order.ry_number,
@@ -245,7 +257,7 @@ export class ExportService {
         product: order.product,
         delivery_round: order.delivery_round,
         total_quantity: order.total_order_qty,
-        accumulated_total: exported.total_shipped || 0,
+        accumulated_total: totalShipped,
         shipped_quantity: 0,
         remaining_quantity: totalQuantity - totalShipped,
       };
@@ -281,6 +293,21 @@ export class ExportService {
     if (!row) return { found: false as const };
 
     const writableUpdates: Record<string, DbValue> = {};
+    
+    // If any size column is being updated, recalculate shipped_quantity
+    const sizeKeys = Object.keys(updates).filter(k => sizeColumns.includes(k));
+    if (sizeKeys.length > 0) {
+      // We need the full row to calculate the new total correctly if only some sizes are provided
+      // or we can just assume the payload contains all sizes we want to sum.
+      // Usually, the frontend sends all sizes.
+      const currentSizes: Record<string, any> = {};
+      sizeColumns.forEach(col => {
+        currentSizes[col] = updates[col] !== undefined ? updates[col] : row[col];
+      });
+      const newTotal = sizeColumns.reduce((sum, col) => sum + toNumber(currentSizes[col]), 0);
+      updates.shipped_quantity = newTotal;
+    }
+
     EXPORT_UPDATE_COLUMNS.forEach((column) => {
       if (updates[column] !== undefined) writableUpdates[column] = updates[column];
     });
