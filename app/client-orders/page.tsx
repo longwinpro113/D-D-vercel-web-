@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { sizes, entrySizes, sizeToCol } from "@/lib/size";
 import { getErrorMessage } from "../../lib/types";
+import { formatVnDate } from "@/lib/shared";
 type OrderRow = {
     id: string | number;
     ry_number: string;
@@ -11,12 +12,20 @@ type OrderRow = {
     model_name?: string | null;
     product?: string | null;
     delivery_round?: string | null;
+    CRD?: string | null;
     client?: string | null;
     [key: string]: string | number | null | undefined;
 };
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import { Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from "@mui/material";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
+
+dayjs.extend(customParseFormat);
 import { ChevronDown, X as LucideX, Edit, Trash2, Search, RotateCcw, FileText } from "lucide-react";
 import { FaFilePdf } from "react-icons/fa6";
 import jsPDF from "jspdf";
@@ -38,6 +47,7 @@ export default function ClientOrdersPage() {
         article: "",
         ry_number: "",
         delivery_round: "",
+        CRD: "",
         model_name: "",
         product: "",
         sizeValues: {} as Record<string, string>,
@@ -118,6 +128,7 @@ export default function ClientOrdersPage() {
             article: row.article || "",
             ry_number: row.ry_number || "",
             delivery_round: row.delivery_round || "",
+            CRD: row.CRD || "",
             model_name: row.model_name || "",
             product: row.product || "",
             sizeValues: sv,
@@ -132,6 +143,7 @@ export default function ClientOrdersPage() {
             article: editForm.article || null,
             ry_number: editForm.ry_number || null,
             delivery_round: editForm.delivery_round || null,
+            CRD: editForm.CRD || null,
             model_name: editForm.model_name || null,
             product: editForm.product || null,
         };
@@ -215,7 +227,7 @@ export default function ClientOrdersPage() {
             if (activeSizes.length === 0 && entrySizes.length > 0) activeSizes = [entrySizes[0]];
 
             const head = [[
-                "STT", "ĐƠN HÀNG", "ARTICLE", "MODEL NAME", "SẢN PHẨM", "ĐỢT", "TỔNG", ...activeSizes.map(String)
+                "STT", "ĐƠN HÀNG", "ARTICLE", "MODEL NAME", "SẢN PHẨM", "ĐỢT", "CRD", "TỔNG", ...activeSizes.map(String)
             ]];
 
             const body = filteredRows.map((row, i) => [
@@ -225,6 +237,7 @@ export default function ClientOrdersPage() {
                 row.model_name || "",
                 row.product || "",
                 row.delivery_round || "",
+                row.CRD || "",
                 entrySizes.reduce((sum, s) => sum + (Number(row[sizeToCol(s)]) || 0), 0),
                 ...activeSizes.map(s => row[sizeToCol(s)] || "-")
             ]);
@@ -352,6 +365,7 @@ export default function ClientOrdersPage() {
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">MODEL NAME</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">SẢN PHẨM</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">ĐỢT</th>
+                                <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">CRD</th>
                                 <th className="bg-slate-200 px-4 py-3 text-center font-bold text-blue-800 whitespace-nowrap border-r border-slate-100">TỔNG</th>
                                 {
                                     entrySizes.map((s) => (
@@ -371,6 +385,7 @@ export default function ClientOrdersPage() {
                                         <td className="px-4 py-2 text-center font-medium whitespace-nowrap border-r border-slate-100">{row.model_name || "-"}</td>
                                         <td className="px-4 py-2 text-center font-medium whitespace-nowrap border-r border-slate-100">{row.product || "-"}</td>
                                         <td className="px-4 py-2 text-center font-medium whitespace-nowrap border-r border-slate-100">{row.delivery_round || "-"}</td>
+                                        <td className="px-4 py-2 text-center font-medium whitespace-nowrap border-r border-slate-100 text-blue-600">{row.CRD || "-"}</td>
                                         <td className="px-4 py-2 text-center font-bold text-blue-700 bg-blue-50/30 whitespace-nowrap border-r border-slate-100">
                                             {entrySizes.reduce((sum, s) => sum + (Number(row[sizeToCol(s)]) || 0), 0)}
                                         </td>
@@ -411,6 +426,15 @@ export default function ClientOrdersPage() {
                             <TextField label="Model Name" fullWidth value={editForm.model_name} onChange={(e) => setEditForm({ ...editForm, model_name: e.target.value })} />
                             <TextField label="Sản Phẩm" fullWidth value={editForm.product} onChange={(e) => setEditForm({ ...editForm, product: e.target.value })} />
                             <TextField label="Đợt Xuống Hàng" fullWidth value={editForm.delivery_round} onChange={(e) => setEditForm({ ...editForm, delivery_round: e.target.value })} />
+                            <LocalizationProvider dateAdapter={AdapterDayjs}>
+                                <DatePicker
+                                    label="Ngày Xuất Hàng (CRD)"
+                                    value={editForm.CRD ? dayjs(editForm.CRD, "DD/MM/YYYY") : null}
+                                    onChange={(newValue) => setEditForm({ ...editForm, CRD: newValue ? newValue.format("DD/MM/YYYY") : "" })}
+                                    format="DD/MM/YYYY"
+                                    slotProps={{ textField: { fullWidth: true } }}
+                                />
+                            </LocalizationProvider>
                         </div>
                         <div className="mt-8 grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 bg-slate-50 p-4 rounded-2xl">
                             {entrySizes.map((s) => (

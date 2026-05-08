@@ -89,15 +89,22 @@ export class ExportModel {
   }
 
   static async getRemainingBaseOrders(whereSQL: string, params: DbParams) {
+    const formattedColumns = [
+      "o.ry_number",
+      "o.article",
+      "o.model_name",
+      "o.product",
+      "o.delivery_round",
+      "o.total_order_qty",
+      "DATE_FORMAT(o.CRD, '%d/%m/%Y') AS CRD",
+      "DATE_FORMAT(o.client_export_date, '%d/%m/%Y') AS client_export_date",
+      "DATE_FORMAT(o.client_import_date, '%d/%m/%Y') AS client_import_date",
+      ...sizeColumns.map((column) => `o.${column}`),
+    ];
+
     const query = `
       SELECT
-        o.ry_number,
-        o.article,
-        o.model_name,
-        o.product,
-        o.delivery_round,
-        o.total_order_qty,
-        ${sizeColumns.map((column) => `o.${column}`).join(", ")}
+        ${formattedColumns.join(", ")}
       FROM orders o
       ${whereSQL}
     `;

@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import type { DbParams, DbValue } from "@/lib/types";
 import { sizeColumns as allSizeColumns } from "../size";
+import { formatDateInputValue } from "../shared";
 
 export { sizes, entrySizes, sizeColumns, sizeToCol } from "../size";
 
@@ -23,27 +24,48 @@ export const ORDER_SELECT_COLUMNS = [
 ];
 
 export const buildInsertParts = (data: Record<string, DbValue>) => {
-  const keys = Object.keys(data);
+  const sanitizedData = { ...data };
+  ["CRD", "client_export_date", "client_import_date"].forEach((key) => {
+    if (sanitizedData[key] && typeof sanitizedData[key] === "string") {
+      sanitizedData[key] = formatDateInputValue(sanitizedData[key] as string);
+    }
+  });
+
+  const keys = Object.keys(sanitizedData);
   return {
     keys,
     columnsSql: keys.join(", "),
     placeholdersSql: keys.map(() => "?").join(", "),
-    values: keys.map((key) => data[key]),
+    values: keys.map((key) => sanitizedData[key]),
   };
 };
 
 export const buildUpdateParts = (updates: Record<string, DbValue>) => {
-  const keys = Object.keys(updates);
+  const sanitizedUpdates = { ...updates };
+  ["CRD", "client_export_date", "client_import_date"].forEach((key) => {
+    if (sanitizedUpdates[key] && typeof sanitizedUpdates[key] === "string") {
+      sanitizedUpdates[key] = formatDateInputValue(sanitizedUpdates[key] as string);
+    }
+  });
+
+  const keys = Object.keys(sanitizedUpdates);
   return {
     keys,
     fieldsSql: keys.map((key) => `${key} = ?`).join(", "),
-    values: keys.map((key) => updates[key]),
+    values: keys.map((key) => sanitizedUpdates[key]),
   };
 };
 
 export class OrderModel {
   static async getAll(client?: string) {
-    let query = `SELECT ${ORDER_SELECT_COLUMNS.join(", ")} FROM orders`;
+    const formattedColumns = ORDER_SELECT_COLUMNS.map((col) => {
+      if (["CRD", "client_export_date", "client_import_date"].includes(col)) {
+        return `DATE_FORMAT(${col}, '%d/%m/%Y') AS ${col}`;
+      }
+      return col;
+    });
+
+    let query = `SELECT ${formattedColumns.join(", ")} FROM orders`;
     const params: DbParams = [];
 
     if (client) {
