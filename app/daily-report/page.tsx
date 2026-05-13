@@ -610,7 +610,7 @@ export default function DailyReportPage() {
                                         <td className="sticky top-[44px] left-[48px] z-30 bg-[#f8fafc] border-b border-slate-100 h-10 shadow-[inset_-1px_0_0_0_#e2e8f0] px-3 py-2 text-center font-bold text-blue-600 uppercase tracking-wider text-[13px] whitespace-nowrap">
                                             {group.date}
                                         </td>
-                                        <td colSpan={9 + entrySizes.length + 1} className="sticky top-[44px] z-20 bg-[#f8fafc] border-b border-slate-100 px-4 py-2"></td>
+                                        <td colSpan={11 + entrySizes.length} className="sticky top-[44px] z-20 bg-[#f8fafc] border-b border-slate-100 px-4 py-2"></td>
                                     </tr>
                                     {group.rows.map((row, index) => {
                                         const status = (row.remaining_quantity ?? 0) === 0 ? "Ok" : "Not Ok";

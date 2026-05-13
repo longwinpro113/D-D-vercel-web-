@@ -100,19 +100,21 @@ export default function RemainingReportPage() {
     };
 
     const exportExcel = () => {
-        const headers = ["STT", "ARTICLE", "ĐƠN HÀNG (RY)", "PRODUCT", "MODEL NAME", "CRD", "ĐỢT", "TỔNG SL", "ĐÃ GIAO", "CÒN LẠI", ...sizes];
+        const headers = ["STT", "LỆNH (RY)", "ARTICLE", "PRODUCT", "MODEL NAME", "CRD", "ĐỢT", "SỐ LƯỢNG DH", "ĐÃ GIAO", "CÒN LẠI", "NGÀY GIAO", ...sizes];
         const csvRows = filteredRows.map((row, idx) => {
+            const remaining = row.remaining || {};
             return [
                 idx + 1,
-                row.article || "-",
                 row.ry_number,
+                row.article || "-",
                 row.product || "-",
                 row.model_name || "-",
                 row.CRD || "-",
                 row.delivery_round || "-",
-                row.total_quantity || 0,
-                row.accumulated_total || 0,
-                row.remaining_quantity || 0,
+                row.total_order_qty || 0,
+                remaining.accumulated_total || 0,
+                remaining.remaining_quantity || 0,
+                "ĐƠN HÀNG",
                 ...sizes.map(s => row[sizeToCol(s)] ?? 0)
             ].join(",");
         });
@@ -213,6 +215,7 @@ export default function RemainingReportPage() {
                                 <th className="sticky z-50 bg-slate-100 px-3 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-200 shadow-[inset_-1px_0_0_0_#e2e8f0]" style={{ left: "48px" }}>LỆNH (RY)</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">ARTICLE</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">ĐỢT HÀNG</th>
+                                <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">PRODUCT</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">MODEL NAME</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">CRD</th>
                                 <th className="bg-slate-200 px-4 py-3 text-center font-bold text-blue-800 whitespace-nowrap border-r border-slate-100">SỐ LƯỢNG DH</th>
@@ -243,6 +246,7 @@ export default function RemainingReportPage() {
                                             <td className="sticky z-20 px-3 py-2 text-center font-bold text-emerald-800 whitespace-nowrap shadow-[inset_-1px_0_0_0_#cbd5e1]" style={{ left: "48px", backgroundColor: currentBg }}>{row.ry_number}</td>
                                             <td className="px-4 py-2 text-center font-bold text-blue-800 whitespace-nowrap border-r border-slate-200/60">{row.article || "-"}</td>
                                             <td className="px-4 py-2 text-center font-medium whitespace-nowrap border-r border-slate-200/60">{row.delivery_round || "-"}</td>
+                                            <td className="px-4 py-2 text-center font-medium whitespace-nowrap border-r border-slate-200/60">{row.product || "-"}</td>
                                             <td className="px-4 py-2 text-center font-medium whitespace-nowrap border-r border-slate-200/60">{row.model_name || "-"}</td>
                                             <td className="px-4 py-2 text-center font-bold text-blue-600 whitespace-nowrap border-r border-slate-200/60">{row.CRD || "-"}</td>
                                             <td className="px-4 py-2 text-center font-bold text-blue-800 whitespace-nowrap border-r border-slate-200/60 bg-blue-100/10">{row.total_order_qty || 0}</td>
@@ -273,6 +277,8 @@ export default function RemainingReportPage() {
                                                 <td className="border-r border-slate-200/60"></td>
                                                 <td className="border-r border-slate-200/60"></td>
                                                 <td className="border-r border-slate-200/60"></td>
+                                                <td className="border-r border-slate-200/60"></td>
+                                                <td className="border-r border-slate-200/60"></td>
                                                 <td className="px-4 py-1 text-center text-slate-600 font-medium border-r border-slate-200/60 bg-white/20">{exp.export_date}</td>
                                                 {sizes.map((s) => {
                                                     const col = sizeToCol(s);
@@ -292,6 +298,8 @@ export default function RemainingReportPage() {
                                         <tr className="font-bold border-b border-slate-300/60" style={{ backgroundColor: currentBg }}>
                                             <td className="sticky left-0 z-20 shadow-[inset_-1px_0_0_0_#cbd5e1]" style={{ width: "48px", minWidth: "48px", backgroundColor: currentBg }}></td>
                                             <td className="sticky z-20 shadow-[inset_-1px_0_0_0_#cbd5e1]" style={{ left: "48px", backgroundColor: currentBg }}></td>
+                                            <td className="border-r border-slate-200/60"></td>
+                                            <td className="border-r border-slate-200/60"></td>
                                             <td className="border-r border-slate-200/60"></td>
                                             <td className="border-r border-slate-200/60"></td>
                                             <td className="border-r border-slate-200/60"></td>
@@ -325,6 +333,9 @@ export default function RemainingReportPage() {
                         <tfoot className="sticky bottom-0 z-40 bg-yellow-400 font-bold text-slate-900 shadow-[0_-2px_4px_rgba(0,0,0,0.1)]">
                             <tr>
                                 <td colSpan={2} className="sticky left-0 z-50 bg-yellow-400 px-3 py-3 text-center border-r border-yellow-500 shadow-[inset_-1px_0_0_0_#eab308]" style={{ width: "100px", minWidth: "100px" }}>TỔNG</td>
+                                <td className="px-4 py-3 text-center border-r border-yellow-500"></td>
+                                <td className="px-4 py-3 text-center border-r border-yellow-500"></td>
+                                <td className="px-4 py-3 text-center border-r border-yellow-500"></td>
                                 <td className="px-4 py-3 text-center border-r border-yellow-500"></td>
                                 <td className="px-4 py-3 text-center border-r border-yellow-500"></td>
                                 <td className="px-4 py-3 text-center border-r border-yellow-500"></td>

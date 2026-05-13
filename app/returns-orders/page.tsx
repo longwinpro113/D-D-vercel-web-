@@ -197,7 +197,7 @@ export default function ReturnsOrdersPage() {
                                         <td className="sticky left-[48px] z-30 bg-[#f8fafc] border-b border-slate-100 h-10 shadow-[inset_-1px_0_0_0_#e2e8f0] px-3 py-2 text-center font-bold text-blue-600 uppercase tracking-wider whitespace-nowrap">
                                             {group.date}
                                         </td>
-                                        <td colSpan={6 + entrySizes.length} className="bg-[#f8fafc] border-b border-slate-100 px-4 py-2"></td>
+                                        <td colSpan={7 + entrySizes.length} className="bg-[#f8fafc] border-b border-slate-100 px-4 py-2"></td>
                                     </tr>
                                     {group.rows.map((row, index) => {
                                         const rowBg = index % 2 === 0 ? "bg-white" : "bg-slate-50";
