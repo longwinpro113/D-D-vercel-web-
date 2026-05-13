@@ -208,7 +208,7 @@ export default function RemainingReportPage() {
                 </div>
 
                 <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 touch-pan-x overscroll-x-contain report-scrollbar">
-                    <table className="border-collapse text-sm w-max min-w-full table-fixed">
+                    <table className="border-collapse text-sm w-max table-fixed">
                         <thead className="sticky top-0 z-40 bg-slate-100 text-slate-600">
                             <tr className="border-b border-slate-200">
                                 <th className="sticky left-0 z-50 bg-slate-100 px-3 py-3 text-center font-bold text-slate-800 border-r border-slate-200" style={{ width: "48px", minWidth: "48px" }}>STT</th>
@@ -225,7 +225,6 @@ export default function RemainingReportPage() {
                                 {sizes.map((s) => (
                                     <th key={s} className="bg-slate-100 px-1 py-3 text-center font-bold text-slate-800 w-12 border border-white">{s}</th>
                                 ))}
-                                <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-l border-slate-100">TỔNG</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -263,7 +262,6 @@ export default function RemainingReportPage() {
                                                     </td>
                                                 );
                                             })}
-                                            <td className="px-4 py-2 text-center font-bold text-blue-800 bg-blue-100/10 border-l border-slate-200/60">{row.total_order_qty || 0}</td>
                                         </tr>
 
                                         {/* Rows Ngày Giao (Export Rows) */}
@@ -290,7 +288,6 @@ export default function RemainingReportPage() {
                                                         </td>
                                                     );
                                                 })}
-                                                <td className="px-4 py-1 text-center font-bold text-slate-700 border-l border-slate-200/60">{exp.shipped_quantity || 0}</td>
                                             </tr>
                                         ))}
 
@@ -324,7 +321,6 @@ export default function RemainingReportPage() {
                                                     </td>
                                                 );
                                             })}
-                                            <td className="px-4 py-2 text-center font-bold text-rose-700 border-l border-slate-200/60">{remaining.remaining_quantity || 0}</td>
                                         </tr>
                                     </React.Fragment>
                                 );
@@ -333,8 +329,6 @@ export default function RemainingReportPage() {
                         <tfoot className="sticky bottom-0 z-40 bg-yellow-400 font-bold text-slate-900 shadow-[0_-2px_4px_rgba(0,0,0,0.1)]">
                             <tr>
                                 <td colSpan={2} className="sticky left-0 z-50 bg-yellow-400 px-3 py-3 text-center border-r border-yellow-500 shadow-[inset_-1px_0_0_0_#eab308]" style={{ width: "100px", minWidth: "100px" }}>TỔNG</td>
-                                <td className="px-4 py-3 text-center border-r border-yellow-500"></td>
-                                <td className="px-4 py-3 text-center border-r border-yellow-500"></td>
                                 <td className="px-4 py-3 text-center border-r border-yellow-500"></td>
                                 <td className="px-4 py-3 text-center border-r border-yellow-500"></td>
                                 <td className="px-4 py-3 text-center border-r border-yellow-500"></td>
@@ -353,9 +347,6 @@ export default function RemainingReportPage() {
                                 {sizes.map((s) => (
                                     <td key={s} className="px-1 py-3 text-center border border-yellow-500"></td>
                                 ))}
-                                <td className="px-4 py-3 text-center border-l border-yellow-500 bg-yellow-500/30">
-                                    {filteredRows.reduce((sum, r) => sum + (Number(r.remaining?.remaining_quantity) || 0), 0).toLocaleString()}
-                                </td>
                             </tr>
                         </tfoot>
                     </table>
