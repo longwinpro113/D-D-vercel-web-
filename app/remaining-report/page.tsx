@@ -6,7 +6,10 @@ import { sizes, sizeToCol } from "@/lib/size";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import { Snackbar, Alert } from "@mui/material";
-import { ChevronDown, Printer, FileSpreadsheet, Search } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
+import { FaFilePdf } from "react-icons/fa6";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 type RemainingRow = {
     ry_number: string;
@@ -99,34 +102,92 @@ export default function RemainingReportPage() {
         setSnackbar((prev) => ({ ...prev, open: false }));
     };
 
-    const exportExcel = () => {
-        const headers = ["STT", "LỆNH (RY)", "ARTICLE", "PRODUCT", "MODEL NAME", "CRD", "ĐỢT", "SỐ LƯỢNG DH", "ĐÃ GIAO", "CÒN LẠI", "NGÀY GIAO", ...sizes];
-        const csvRows = filteredRows.map((row, idx) => {
-            const remaining = row.remaining || {};
-            return [
-                idx + 1,
-                row.ry_number,
-                row.article || "-",
-                row.product || "-",
-                row.model_name || "-",
-                row.CRD || "-",
-                row.delivery_round || "-",
-                row.total_order_qty || 0,
-                remaining.accumulated_total || 0,
-                remaining.remaining_quantity || 0,
-                "ĐƠN HÀNG",
-                ...sizes.map(s => row[sizeToCol(s)] ?? 0)
-            ].join(",");
-        });
-        const csvContent = "\ufeff" + [headers.join(","), ...csvRows].join("\n");
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.setAttribute("download", `remaining-report_${client}_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+
+
+    const exportPdf = async () => {
+        if (filteredRows.length === 0) return;
+        
+        try {
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+            
+            // --- 1. Load Font ---
+            try {
+                const fontUrl = "https://unpkg.com/roboto-font@0.1.0/fonts/Roboto/roboto-regular-webfont.ttf";
+                const res = await fetch(fontUrl);
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const base64Font = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(blob);
+                    });
+                    doc.addFileToVFS('Roboto-Regular.ttf', base64Font as string);
+                    doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+                    doc.addFont('Roboto-Regular.ttf', 'Roboto', 'bold');
+                    doc.setFont('Roboto');
+                }
+            } catch(e) { console.warn("Font error", e); }
+
+            const pageWidth = doc.internal.pageSize.getWidth();
+            let currentY = 40;
+
+            doc.setFont('Roboto', 'bold');
+            doc.setFontSize(16);
+            doc.text("BÁO CÁO CHI TIẾT HÀNG CÒN LẠI", 30, currentY);
+            currentY += 20;
+            
+            doc.setFont('Roboto', 'normal');
+            doc.setFontSize(10);
+            doc.text(`KHÁCH HÀNG: ${(client || "Tất cả").toUpperCase()}`, 30, currentY);
+            currentY += 30;
+
+            // Determine active sizes (only those that have values in order rows)
+            let activeSizes = sizes.filter(s => {
+                return filteredRows.some(row => (parseFloat(String(row[sizeToCol(s)])) || 0) > 0);
+            });
+            if (activeSizes.length === 0 && sizes.length > 0) activeSizes = [sizes[0]];
+
+            const head = [[
+                "STT", "LỆNH (RY)", "ART", "PRODUCT", "MODEL NAME", "CRD", "ĐỢT", "TỔNG DH", "ĐÃ GIAO", "CÒN LẠI", ...activeSizes.map(String)
+            ]];
+
+            const body = filteredRows.map((row, i) => {
+                const remaining = row.remaining || {};
+                return [
+                    i + 1,
+                    row.ry_number || "",
+                    row.article || "-",
+                    row.product || "-",
+                    row.model_name || "-",
+                    row.CRD || "-",
+                    row.delivery_round || "-",
+                    row.total_order_qty || 0,
+                    remaining.accumulated_total || 0,
+                    remaining.remaining_quantity || 0,
+                    ...activeSizes.map(s => {
+                        const val = row[sizeToCol(s)];
+                        return (val && val !== 0 && val !== "0") ? val : "-";
+                    })
+                ];
+            });
+
+            autoTable(doc, {
+                startY: currentY,
+                head: head,
+                body: body,
+                theme: 'grid',
+                tableWidth: 'wrap', // Fit content
+                styles: { font: 'Roboto', fontSize: activeSizes.length > 15 ? 6 : 7.5, cellPadding: 2, valign: 'middle', halign: 'center' },
+                headStyles: { fillColor: [241, 245, 249], textColor: [0, 0, 0], fontStyle: 'bold' },
+                margin: { left: 30, right: 30 },
+            });
+
+            doc.save(`Remaining_Report_${(client || "All").replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+        } catch (error: any) {
+            console.error("PDF Export error:", error);
+            alert("Lỗi xuất PDF: " + error.message);
+        }
     };
 
     if (!mounted) return <div className="bg-slate-50 min-h-screen" />;
@@ -204,6 +265,14 @@ export default function RemainingReportPage() {
                         }}
                     />
 
+                    <button
+                        onClick={exportPdf}
+                        className="flex items-center justify-center text-rose-600 hover:text-rose-700 transition-all shrink-0 ml-1 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Xuất PDF"
+                        disabled={!client || rows.length === 0}
+                    >
+                        <FaFilePdf size={28} className="cursor-pointer" />
+                    </button>
 
                 </div>
 

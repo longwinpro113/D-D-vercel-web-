@@ -217,7 +217,6 @@ export default function ClientOrdersPage() {
             doc.setFont('Roboto', 'normal');
             doc.setFontSize(10);
             doc.text(`KHÁCH HÀNG: ${(client || "Tất cả").toUpperCase()}`, 30, currentY);
-            doc.text(`Ngày in: ${new Date().toLocaleDateString("vi-VN")}`, pageWidth - 30, currentY, { align: "right" });
             currentY += 30;
 
             // Determine active sizes

@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
   --background: #f6f7fb;
@@ -31,6 +31,14 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+button,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  cursor: pointer !important;
 }
 
 .report-scrollbar {
