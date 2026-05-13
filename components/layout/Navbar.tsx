@@ -80,13 +80,43 @@ export function Navbar() {
                     title="Nhập Phiếu Xuất Kho"
                     desc="Nhập thông tin giao hàng"
                   />
+                  <DropdownItem
+                    href="/returns-entry-form"
+                    icon={<Database size={18} />}
+                    title="Nhập Phiếu Hàng Trả Sửa"
+                    desc="Nhập thông tin nhận/trả hàng sửa"
+                  />
                 </div>
               )}
             </div>
 
-            <Link href="/client-orders" className="whitespace-nowrap py-6 transition-colors hover:text-white">
-              Theo dõi đơn hàng
-            </Link>
+            <div
+              className="group relative flex h-20 items-center"
+              onMouseEnter={() => setOpenMenu("tracking")}
+              onMouseLeave={() => setOpenMenu(null)}
+            >
+              <button type="button" className="flex items-center gap-1 py-6 transition-colors hover:text-white">
+                Theo dõi đơn hàng
+                <ChevronUp size={14} className={`transition-transform ${openMenu === "tracking" ? "rotate-180" : ""}`} />
+              </button>
+
+              {openMenu === "tracking" && (
+                <div className="absolute left-0 top-full z-50 w-72 rounded-xl border border-white/10 bg-[#1a1a1a] p-2 shadow-2xl">
+                  <DropdownItem
+                    href="/client-orders"
+                    icon={<ChartBar size={18} />}
+                    title="Đơn hàng của khách"
+                    desc="Theo dõi trạng thái đơn hàng của khách"
+                  />
+                  <DropdownItem
+                    href="/returns-orders"
+                    icon={<ChartGantt size={18} />}
+                    title="Đơn hàng trả sửa (Nhận)"
+                    desc="Theo dõi hàng khách trả về"
+                  />
+                </div>
+              )}
+            </div>
 
             <div
               className="group relative flex h-20 items-center"
@@ -111,6 +141,34 @@ export function Navbar() {
                     icon={<ChartGantt size={18} />}
                     title="Tiến Độ Giao Hàng"
                     desc="Xem và quản lý tiến độ giao hàng"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div
+              className="group relative flex h-20 items-center"
+              onMouseEnter={() => setOpenMenu("returns")}
+              onMouseLeave={() => setOpenMenu(null)}
+            >
+              <button type="button" className="flex items-center gap-1 py-6 transition-colors hover:text-white">
+                Quản Lý Hàng Trả Sửa
+                <ChevronUp size={14} className={`transition-transform ${openMenu === "returns" ? "rotate-180" : ""}`} />
+              </button>
+
+              {openMenu === "returns" && (
+                <div className="absolute left-0 top-full z-50 w-72 rounded-xl border border-white/10 bg-[#1a1a1a] p-2 shadow-2xl">
+                  <DropdownItem
+                    href="/returns-delivery-report"
+                    icon={<ChartBar size={18} />}
+                    title="Báo Biểu Giao Hàng Trả Sửa"
+                    desc="Lịch sử giao hàng đã sửa"
+                  />
+                  <DropdownItem
+                    href="/returns-progress"
+                    icon={<ChartGantt size={18} />}
+                    title="Theo Dõi Tiến Độ Hàng Trả Sửa"
+                    desc="Số lượng còn tồn (Nhận - Trả)"
                   />
                 </div>
               )}
@@ -172,16 +230,28 @@ export function Navbar() {
                 )}
               </div>
 
-              <a
-                href="/client-orders"
-                onClick={closeMobileMenu}
-                className="flex items-center gap-3 rounded-lg p-3 text-lg font-semibold text-white transition-colors hover:bg-white/5"
-              >
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10">
-                  <Database size={18} />
-                </span>
-                Theo dõi đơn hàng
-              </a>
+              <div>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between rounded-lg p-3 text-lg font-semibold text-white transition-colors hover:bg-white/5"
+                  onClick={() => toggleMenu("tracking")}
+                >
+                  Theo dõi đơn hàng
+                  <ChevronUp size={18} className={`transition-transform ${openMenu === "tracking" ? "rotate-180" : ""}`} />
+                </button>
+                {openMenu === "tracking" && (
+                  <div className="ml-3 mt-1 flex flex-col gap-1 border-l border-white/10 pl-4">
+                    <a href="/client-orders" onClick={closeMobileMenu} className="flex items-start gap-4 rounded-lg p-3 transition-colors hover:bg-white/5">
+                      <div className="mt-1 text-gray-500"><ChartBar size={18} /></div>
+                      <div><span className="text-base font-semibold text-white">Đơn hàng của khách</span></div>
+                    </a>
+                    <a href="/returns-orders" onClick={closeMobileMenu} className="flex items-start gap-4 rounded-lg p-3 transition-colors hover:bg-white/5">
+                      <div className="mt-1 text-gray-500"><ChartGantt size={18} /></div>
+                      <div><span className="text-base font-semibold text-white">Đơn hàng trả sửa (Nhận)</span></div>
+                    </a>
+                  </div>
+                )}
+              </div>
 
               <div>
                 <button

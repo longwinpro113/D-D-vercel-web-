@@ -317,7 +317,7 @@ export default function ClientOrdersPage() {
 
                     <Autocomplete
                         options={Array.from(new Set(rows.map((o) => o.ry_number)))}
-                        value={orderRy || null}
+                        value={(orderRy || null) as any}
                         popupIcon={autocompletePopupIcon}
                         forcePopupIcon={true}
                         onChange={(_, newValue) => setOrderRy(newValue)}

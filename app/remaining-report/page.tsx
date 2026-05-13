@@ -100,7 +100,7 @@ export default function RemainingReportPage() {
     };
 
     const exportExcel = () => {
-        const headers = ["STT", "ARTICLE", "ĐƠN HÀNG (RY)", "PRODUCT", "MODEL NAME", "ĐỢT", "TỔNG SL", "ĐÃ GIAO", "CÒN LẠI", ...sizes];
+        const headers = ["STT", "ARTICLE", "ĐƠN HÀNG (RY)", "PRODUCT", "MODEL NAME", "CRD", "ĐỢT", "TỔNG SL", "ĐÃ GIAO", "CÒN LẠI", ...sizes];
         const csvRows = filteredRows.map((row, idx) => {
             return [
                 idx + 1,
@@ -108,6 +108,7 @@ export default function RemainingReportPage() {
                 row.ry_number,
                 row.product || "-",
                 row.model_name || "-",
+                row.CRD || "-",
                 row.delivery_round || "-",
                 row.total_quantity || 0,
                 row.accumulated_total || 0,
@@ -174,7 +175,7 @@ export default function RemainingReportPage() {
 
                     <Autocomplete
                         options={Array.from(new Set(rows.map((o) => o.ry_number)))}
-                        value={orderRy || null}
+                        value={(orderRy || null) as any}
                         popupIcon={autocompletePopupIcon}
                         forcePopupIcon={true}
                         onChange={(_, newValue) => setOrderRy(newValue ?? "")}
@@ -213,6 +214,7 @@ export default function RemainingReportPage() {
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">ARTICLE</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">ĐỢT HÀNG</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">MODEL NAME</th>
+                                <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">CRD</th>
                                 <th className="bg-slate-200 px-4 py-3 text-center font-bold text-blue-800 whitespace-nowrap border-r border-slate-100">SỐ LƯỢNG DH</th>
                                 <th className="bg-slate-200 px-4 py-3 text-center font-bold text-purple-800 whitespace-nowrap border-r border-slate-100">SL ĐÃ GIAO</th>
                                 <th className="bg-slate-200 px-4 py-3 text-center font-bold text-rose-800 whitespace-nowrap border-r border-slate-100">SL CHƯA GIAO</th>
@@ -242,6 +244,7 @@ export default function RemainingReportPage() {
                                             <td className="px-4 py-2 text-center font-bold text-blue-800 whitespace-nowrap border-r border-slate-200/60">{row.article || "-"}</td>
                                             <td className="px-4 py-2 text-center font-medium whitespace-nowrap border-r border-slate-200/60">{row.delivery_round || "-"}</td>
                                             <td className="px-4 py-2 text-center font-medium whitespace-nowrap border-r border-slate-200/60">{row.model_name || "-"}</td>
+                                            <td className="px-4 py-2 text-center font-bold text-blue-600 whitespace-nowrap border-r border-slate-200/60">{row.CRD || "-"}</td>
                                             <td className="px-4 py-2 text-center font-bold text-blue-800 whitespace-nowrap border-r border-slate-200/60 bg-blue-100/10">{row.total_order_qty || 0}</td>
                                             <td className="px-4 py-2 text-center font-bold text-purple-800 whitespace-nowrap border-r border-slate-200/60 bg-purple-100/10">{remaining.accumulated_total || 0}</td>
                                             <td className={`px-4 py-2 text-center font-bold whitespace-nowrap border-r border-slate-200/60 ${remaining.remaining_quantity === 0 ? "text-emerald-700" : "text-rose-700"}`}>{remaining.remaining_quantity || 0}</td>
@@ -322,6 +325,7 @@ export default function RemainingReportPage() {
                         <tfoot className="sticky bottom-0 z-40 bg-yellow-400 font-bold text-slate-900 shadow-[0_-2px_4px_rgba(0,0,0,0.1)]">
                             <tr>
                                 <td colSpan={2} className="sticky left-0 z-50 bg-yellow-400 px-3 py-3 text-center border-r border-yellow-500 shadow-[inset_-1px_0_0_0_#eab308]" style={{ width: "100px", minWidth: "100px" }}>TỔNG</td>
+                                <td className="px-4 py-3 text-center border-r border-yellow-500"></td>
                                 <td className="px-4 py-3 text-center border-r border-yellow-500"></td>
                                 <td className="px-4 py-3 text-center border-r border-yellow-500"></td>
                                 <td className="px-4 py-3 text-center border-r border-yellow-500"></td>

@@ -20,6 +20,7 @@ type OrderRecord = {
     model_name?: string;
     product?: string;
     delivery_round?: string | null;
+    CRD?: string | null;
 };
 
 type ErrorShape = {
@@ -162,6 +163,7 @@ export default function ExportEntryFormPage() {
                         <TextField label="Article" variant="outlined" fullWidth value={selectedOrder?.article || ""} disabled sx={getSharedTextFieldSx(selectedOrder?.article)} />
                         <TextField label="Model Name" variant="outlined" fullWidth value={selectedOrder?.model_name || ""} disabled sx={getSharedTextFieldSx(selectedOrder?.model_name)} />
                         <TextField label="Product" variant="outlined" fullWidth value={selectedOrder?.product || ""} disabled sx={getSharedTextFieldSx(selectedOrder?.product)} />
+                        <TextField label="CRD" variant="outlined" fullWidth value={selectedOrder?.CRD || ""} disabled sx={getSharedTextFieldSx(selectedOrder?.CRD)} />
                         <TextField label="Đợt Xuống Hàng" variant="outlined" fullWidth value={selectedOrder?.delivery_round || ""} disabled sx={getSharedTextFieldSx(selectedOrder?.delivery_round)} />
                         <TextField label="Ghi chú" variant="outlined" fullWidth multiline maxRows={3} value={note} onChange={(e) => setNote(e.target.value)} sx={getSharedTextFieldSx(note)} />
                     </Box>

@@ -189,6 +189,7 @@ export default function MonthlyReportPage() {
                                 <th className="border-b border-slate-200 px-3 py-3 text-left">Đợt</th>
                                 <th className="border-b border-slate-200 px-3 py-3 text-left">Article</th>
                                 <th className="border-b border-slate-200 px-3 py-3 text-left">Model</th>
+                                <th className="border-b border-slate-200 px-3 py-3 text-left">CRD</th>
                                 <th className="border-b border-slate-200 px-3 py-3 text-left">Product</th>
                                 <th className="border-b border-slate-200 px-3 py-3 text-left">SL đơn hàng</th>
                                 <th className="border-b border-slate-200 px-3 py-3 text-left">SL dự kiến</th>
@@ -216,6 +217,7 @@ export default function MonthlyReportPage() {
                                         <td className="border-b border-slate-100 px-3 py-2">{row.delivery_round || "-"}</td>
                                         <td className="border-b border-slate-100 px-3 py-2">{row.article || "-"}</td>
                                         <td className="border-b border-slate-100 px-3 py-2">{row.model_name || "-"}</td>
+                                        <td className="border-b border-slate-100 px-3 py-2 font-semibold text-blue-600">{row.CRD || "-"}</td>
                                         <td className="border-b border-slate-100 px-3 py-2">{row.product || "-"}</td>
                                         <td className="border-b border-slate-100 px-3 py-2 font-semibold">{row.total_quantity ?? 0}</td>
                                         <td className="border-b border-slate-100 px-3 py-2">
@@ -253,7 +255,7 @@ export default function MonthlyReportPage() {
                             })}
                             {!loading && rows.length === 0 && (
                                 <tr>
-                                    <td className="px-4 py-8 text-center text-slate-500" colSpan={10 + sizes.length}>
+                                    <td className="px-4 py-8 text-center text-slate-500" colSpan={12 + sizes.length}>
                                         Không có dữ liệu phù hợp.
                                     </td>
                                 </tr>

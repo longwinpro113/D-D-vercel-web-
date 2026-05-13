@@ -63,6 +63,7 @@ const DAILY_TABLE_COL_WIDTHS = [
     144,  // ĐƠN HÀNG
     128,  // PRODUCT
     128,  // MODEL
+    100,  // CRD
     80,   // ROUND
     96,   // SL ĐƠN HÀNG
     96,   // SL TÍCH LŨY
@@ -340,7 +341,7 @@ export default function DailyReportPage() {
                 if (activeSizes.length === 0 && entrySizes.length > 0) activeSizes = [entrySizes[0]];
 
                 const head = [[
-                    "STT", "ĐƠN HÀNG", "ĐỢT", "MODEL NAME", "SL GIAO", 
+                    "STT", "ĐƠN HÀNG", "CRD", "ĐỢT", "MODEL NAME", "SL GIAO", 
                     "CÒN LẠI", "ĐƠN VỊ", "ART", ...activeSizes.map(String), "GHI CHÚ"
                 ]];
 
@@ -349,6 +350,7 @@ export default function DailyReportPage() {
                     return [
                         i + 1,
                         row.ry_number || "",
+                        row.CRD || "",
                         row.delivery_round || "",
                         row.model_name || "",
                         row.shipped_quantity ?? 0,
@@ -535,7 +537,7 @@ export default function DailyReportPage() {
 
                     <Autocomplete
                         options={Array.from(new Set(rows.map(r => r.ry_number).filter(Boolean)))}
-                        value={orderRyFilter || null}
+                        value={(orderRyFilter || null) as any}
                         freeSolo
                         popupIcon={autocompletePopupIcon}
                         forcePopupIcon={true}
@@ -587,6 +589,7 @@ export default function DailyReportPage() {
                                 <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Đợt</th>
                                 <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Article</th>
                                 <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Model Name</th>
+                                <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">CRD</th>
                                 <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Product</th>
                                 <th className="md:sticky top-0 bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Đơn Hàng</th>
                                 <th className="md:sticky top-0 bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Tích Lũy</th>
@@ -623,6 +626,7 @@ export default function DailyReportPage() {
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-orange-600 text-center whitespace-nowrap">{row.delivery_round || "-"}</td>
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.article || "-"}</td>
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.model_name || "-"}</td>
+                                                <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-blue-600 text-center whitespace-nowrap">{row.CRD || "-"}</td>
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.product || "-"}</td>
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#3b82f6] text-center whitespace-nowrap">{row.total_quantity || 0}</td>
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#a855f7] text-center whitespace-nowrap">{row.accumulated_total || 0}</td>

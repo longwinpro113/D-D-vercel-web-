@@ -77,6 +77,7 @@ export class ExportModel {
         o.product,
         o.client,
         o.total_order_qty AS total_quantity,
+        DATE_FORMAT(o.CRD, '%d/%m/%Y') AS CRD,
         ${sizeColumns.map((column) => `e.${column}`).join(", ")}
       FROM export e
       LEFT JOIN orders o
