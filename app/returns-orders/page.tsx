@@ -7,7 +7,8 @@ import { useSharedReportClient } from "@/lib/useSharedReportClient";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import { Snackbar, Alert } from "@mui/material";
-import { ChevronDown, FileText } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { FaFilePdf } from "react-icons/fa";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -213,11 +214,11 @@ export default function ReturnsOrdersPage() {
 
                     <button
                         onClick={exportPDF}
-                        disabled={!client}
-                        className="flex items-center gap-2 px-4 h-[42px] bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors font-medium border border-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={!client || rows.length === 0}
+                        className="flex items-center justify-center text-rose-600 hover:text-rose-700 transition-all shrink-0 ml-1"
+                        title="Xuất PDF"
                     >
-                        <FileText size={18} />
-                        Xuất PDF
+                        <FaFilePdf size={28} className="cursor-pointer" />
                     </button>
                 </div>
 

@@ -6,8 +6,9 @@ import { entrySizes, sizeToCol } from "@/lib/size";
 import { useSharedReportClient } from "@/lib/useSharedReportClient";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
-import { Snackbar, Alert } from "@mui/material";
-import { ChevronDown, FileText } from "lucide-react";
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Snackbar, Alert } from "@mui/material";
+import { ChevronDown, Trash2, Edit2 } from "lucide-react";
+import { FaFilePdf } from "react-icons/fa";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -29,6 +30,13 @@ export default function ReturnsDeliveryReportPage() {
     const [clients, setClients] = useState<string[]>([]);
     const [rows, setRows] = useState<ReturnReportRow[]>([]);
     const [orderRyFilter, setOrderRyFilter] = useState("");
+    const [mounted, setMounted] = useState(false);
+
+    const [editModal, setEditModal] = useState<{
+        open: boolean;
+        row: ReturnReportRow | null;
+    }>({ open: false, row: null });
+
     const [snackbar, setSnackbar] = useState<{
         open: boolean;
         message: string;
@@ -39,16 +47,51 @@ export default function ReturnsDeliveryReportPage() {
         severity: "success",
     });
 
-    const isMounted = useSyncExternalStore(
-        () => () => { },
-        () => true,
-        () => false
-    );
+    useEffect(() => { setMounted(true); }, []);
 
     const handleCloseSnackbar = (_?: React.SyntheticEvent | Event, reason?: string) => {
         if (reason === "clickaway") return;
         setSnackbar(prev => ({ ...prev, open: false }));
     };
+
+    const handleDelete = async (id: number | string) => {
+        if (!confirm("Bạn có chắc chắn muốn xóa dòng này?")) return;
+        try {
+            await axios.delete(`/api/returns/shipped?id=${id}&type=shipped`);
+            setSnackbar({ open: true, message: "Đã xóa thành công!", severity: "success" });
+            void fetchRows();
+        } catch (err) {
+            setSnackbar({ open: true, message: "Lỗi khi xóa dữ liệu.", severity: "error" });
+        }
+    };
+
+    const handleUpdate = async (id: number | string, data: any) => {
+        try {
+            const total = entrySizes.reduce((sum, s) => sum + (Number(data[sizeToCol(s)]) || 0), 0);
+            const updatePayload = {
+                ...data,
+                total_shipped: total
+            };
+            
+            delete updatePayload.id;
+            delete updatePayload.fmt_date;
+            delete updatePayload.lot_balance;
+            delete updatePayload.CRD;
+
+            await axios.put(`/api/returns/shipped?id=${id}&type=shipped`, updatePayload);
+            setSnackbar({ open: true, message: "Đã cập nhật thành công!", severity: "success" });
+            setEditModal({ open: false, row: null });
+            void fetchRows();
+        } catch (err) {
+            setSnackbar({ open: true, message: "Lỗi khi cập nhật dữ liệu.", severity: "error" });
+        }
+    };
+
+    const isMounted = useSyncExternalStore(
+        () => () => { },
+        () => true,
+        () => false
+    );
 
     useEffect(() => {
         const loadClients = async () => {
@@ -75,12 +118,8 @@ export default function ReturnsDeliveryReportPage() {
 
         try {
             const params: Record<string, string> = { client };
-            const res = await axios.get("/api/returns/remaining", { params });
-            // Only show rows that have some activity (either shipped > 0 or received > 0)
-            const data = Array.isArray(res.data) 
-                ? (res.data as ReturnReportRow[]).filter(r => (r.total_received || 0) > 0 || (r.total_shipped || 0) > 0)
-                : [];
-            setRows(data);
+            const res = await axios.get("/api/returns/shipped", { params });
+            setRows(Array.isArray(res.data) ? (res.data as ReturnReportRow[]) : []);
         } catch (err) {
             console.error("[API] Fetch returns error:", err);
             setRows([]);
@@ -100,7 +139,7 @@ export default function ReturnsDeliveryReportPage() {
     const grouped = useMemo(() => {
         const map = new Map<string, ReturnReportRow[]>();
         filteredRows.forEach(row => {
-            const date = row.shipped_date || row.received_date || "Chờ giao";
+            const date = row.shipped_date || "Không xác định";
             if (!map.has(date)) map.set(date, []);
             map.get(date)!.push(row);
         });
@@ -118,13 +157,14 @@ export default function ReturnsDeliveryReportPage() {
         doc.text(`Ngay xuat: ${new Date().toLocaleDateString('vi-VN')}`, 40, 85);
 
         const tableHeaders = [
-            "STT", "Ngay", "Don Hang", "Lo", "Article", "Model Name", "CRD", "Product", "SL Tra", "So du Lo", ...entrySizes
+            "STT", "Ngay", "Don Hang", "Lo", "Article", "Model", "CRD", "Product", "SL Nhan", "Tich Luy", "SL Ngay", "Con Lai", "Trang Thai", ...entrySizes
         ];
 
         const tableRows: any[] = [];
         let stt = 1;
         grouped.forEach(group => {
             group.rows.forEach(row => {
+                const status = (row.lot_balance ?? 0) === 0 ? "Ok" : "Not Ok";
                 tableRows.push([
                     stt++,
                     group.date,
@@ -134,9 +174,15 @@ export default function ReturnsDeliveryReportPage() {
                     row.model_name || "-",
                     row.CRD || "-",
                     row.product || "-",
-                    row.total_shipped,
-                    row.lot_balance === 0 ? "Xong" : row.lot_balance,
-                    ...entrySizes.map(s => row[sizeToCol(s)] || 0)
+                    row.total_received || 0,
+                    row.accumulated_total || 0,
+                    row.total_shipped || 0,
+                    row.lot_balance || 0,
+                    status,
+                    ...entrySizes.map(s => {
+                        const val = row[sizeToCol(s)];
+                        return val ? val : "-";
+                    })
                 ]);
             });
         });
@@ -217,11 +263,11 @@ export default function ReturnsDeliveryReportPage() {
 
                     <button
                         onClick={exportPDF}
-                        disabled={!client}
-                        className="flex items-center gap-2 px-4 h-[42px] bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors font-medium border border-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={!client || rows.length === 0}
+                        className="flex items-center justify-center text-rose-600 hover:text-rose-700 transition-all shrink-0 ml-1"
+                        title="Xuất PDF"
                     >
-                        <FileText size={18} />
-                        Xuất PDF
+                        <FaFilePdf size={28} className="cursor-pointer" />
                     </button>
                 </div>
 
@@ -236,12 +282,15 @@ export default function ReturnsDeliveryReportPage() {
                                 <th className="px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Model Name</th>
                                 <th className="px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">CRD</th>
                                 <th className="px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Product</th>
-                                <th className="px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Trả</th>
-                                <th className="px-4 py-3 text-center font-bold text-rose-700 whitespace-nowrap border-b border-slate-200 bg-rose-50">Số dư Lô</th>
+                                <th className="bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Nhận</th>
+                                <th className="bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Tích Lũy</th>
+                                <th className="bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Ngày</th>
+                                <th className="bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Còn Lại</th>
+                                <th className="px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Trạng Thái</th>
                                 {entrySizes.map((s) => (
                                     <th key={s} className="border-b border-r border-slate-200 px-1 py-3 text-center font-bold text-slate-800 w-11">{s}</th>
                                 ))}
-                                <th className="px-4 py-3 text-center font-bold text-slate-700 border-b border-slate-200">Ghi Chú</th>
+                                <th className="sticky right-0 z-50 bg-slate-100 border-b border-l border-slate-200 px-3 py-3 text-center font-bold text-slate-700 w-24">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -252,9 +301,10 @@ export default function ReturnsDeliveryReportPage() {
                                         <td className="sticky left-[48px] z-30 bg-[#f8fafc] border-b border-slate-100 h-10 shadow-[inset_-1px_0_0_0_#e2e8f0] px-3 py-2 text-center font-bold text-blue-600 uppercase tracking-wider whitespace-nowrap">
                                             {group.date}
                                         </td>
-                                        <td colSpan={8 + entrySizes.length} className="bg-[#f8fafc] border-b border-slate-100 px-4 py-2"></td>
+                                        <td colSpan={11 + entrySizes.length} className="bg-[#f8fafc] border-b border-slate-100 px-4 py-2"></td>
                                     </tr>
                                     {group.rows.map((row, index) => {
+                                        const status = (row.lot_balance ?? 0) === 0 ? "Ok" : "Not Ok";
                                         const rowBg = index % 2 === 0 ? "bg-white" : "bg-slate-50";
                                         return (
                                             <tr key={row.id} className={`${rowBg} hover:bg-blue-50/20 transition-colors group`}>
@@ -269,14 +319,19 @@ export default function ReturnsDeliveryReportPage() {
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.model_name || "-"}</td>
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-blue-600 text-center whitespace-nowrap">{row.CRD || "-"}</td>
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.product || "-"}</td>
-                                                <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#0284c7] text-center whitespace-nowrap">
-                                                    {row.total_shipped}
+                                                <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#3b82f6] text-center whitespace-nowrap">{row.total_received || 0}</td>
+                                                <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#a855f7] text-center whitespace-nowrap">{row.accumulated_total || 0}</td>
+                                                <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#0284c7] text-center whitespace-nowrap">{row.total_shipped || 0}</td>
+                                                <td className={`border-b border-r border-slate-100 px-3 py-2.5 font-bold text-center whitespace-nowrap ${row.lot_balance === 0 ? "text-[#16a34a]" : "text-[#ef4444]"}`}>
+                                                    {row.lot_balance || 0}
                                                 </td>
-                                                <td className={`border-b border-r border-slate-100 px-3 py-2.5 font-bold text-center whitespace-nowrap ${row.lot_balance === 0 ? "text-emerald-600 bg-emerald-50/20" : "text-rose-600 bg-rose-50/20"}`}>
-                                                    {row.lot_balance === 0 ? "Xong" : row.lot_balance}
+                                                <td className={`px-0 py-0 border-b border-r border-slate-100 whitespace-nowrap text-center align-middle ${status === 'Ok' ? 'bg-emerald-50 text-emerald-600' : 'bg-[#fee2e2] text-rose-600'}`}>
+                                                    <div className="w-full h-full min-h-[44px] flex items-center justify-center font-bold text-[13px] whitespace-nowrap">
+                                                        {status}
+                                                    </div>
                                                 </td>
                                                 {entrySizes.map((s) => {
-                                                    const val = row[`s${String(s).replace(".", "_")}`];
+                                                    const val = row[sizeToCol(s)];
                                                     const isEmpty = !val || Number(val) === 0;
                                                     return (
                                                         <td key={s} className={`px-1 py-1 text-center border font-semibold whitespace-nowrap ${isEmpty ? 'border-white bg-[#e2e8f0]' : 'border-slate-200 bg-white'}`}>
@@ -284,8 +339,15 @@ export default function ReturnsDeliveryReportPage() {
                                                         </td>
                                                     );
                                                 })}
-                                                <td className="border-b border-slate-100 px-4 py-2.5 text-slate-600 max-w-xs truncate" title={row.note || ""}>
-                                                    {row.note || "-"}
+                                                <td className={`sticky right-0 z-20 ${rowBg} border-l border-b border-slate-100 px-2 py-2 group-hover:bg-blue-50 whitespace-nowrap`}>
+                                                    <div className="flex justify-center gap-2">
+                                                        <button onClick={() => setEditModal({ open: true, row })} className="p-1 text-[#3b82f6] hover:bg-blue-100 rounded-md transition-colors" title="Chỉnh sửa">
+                                                            <Edit2 size={16} />
+                                                        </button>
+                                                        <button onClick={() => handleDelete(row.id)} className="p-1 text-[#ef4444] hover:bg-red-50 rounded-md transition-colors" title="Xóa">
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );
@@ -296,6 +358,45 @@ export default function ReturnsDeliveryReportPage() {
                     </table>
                 </div>
             </div>
+
+            {/* Edit Modal */}
+            <Dialog open={editModal.open} onClose={() => setEditModal({ open: false, row: null })} maxWidth="md" fullWidth
+                sx={{ "& .MuiDialog-paper": { borderRadius: "16px" } }}>
+                <DialogTitle className="font-bold text-slate-800 border-b border-slate-100">
+                    Chỉnh sửa thông tin Trả Hàng
+                </DialogTitle>
+                <DialogContent className="pt-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {entrySizes.map((s) => (
+                            <TextField
+                                key={s}
+                                label={`Size ${s}`}
+                                type="number"
+                                variant="outlined"
+                                defaultValue={editModal.row ? editModal.row[sizeToCol(s)] : 0}
+                                onChange={(e) => {
+                                    if (editModal.row) {
+                                        editModal.row[sizeToCol(s)] = Number(e.target.value);
+                                    }
+                                }}
+                                size="small"
+                                fullWidth
+                            />
+                        ))}
+                    </div>
+                </DialogContent>
+                <DialogActions className="p-4 border-t border-slate-100">
+                    <Button onClick={() => setEditModal({ open: false, row: null })} className="text-slate-500 font-bold">Hủy</Button>
+                    <Button 
+                        variant="contained" 
+                        onClick={() => editModal.row && handleUpdate(editModal.row.id, editModal.row)}
+                        className="bg-blue-600 hover:bg-blue-700 font-bold px-6 py-2 rounded-xl text-white"
+                    >
+                        Lưu thay đổi
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
             <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={handleCloseSnackbar} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
                 <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} variant="filled" sx={{ width: '100%' }}>{snackbar.message}</Alert>
             </Snackbar>

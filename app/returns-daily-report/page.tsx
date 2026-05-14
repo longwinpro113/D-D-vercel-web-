@@ -8,7 +8,8 @@ import { useSharedReportClient } from "@/lib/useSharedReportClient";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import { Snackbar, Alert, ToggleButton, ToggleButtonGroup, Dialog, DialogTitle, DialogContent, DialogActions, Button } from "@mui/material";
-import { ChevronDown, Trash2, Edit2, FileText } from "lucide-react";
+import { ChevronDown, Trash2, Edit2 } from "lucide-react";
+import { FaFilePdf } from "react-icons/fa";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -290,11 +291,11 @@ export default function ReturnsDailyReportPage() {
 
                     <button
                         onClick={exportPDF}
-                        disabled={!client}
-                        className="flex items-center gap-2 px-4 h-[42px] bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors font-medium border border-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={!client || rows.length === 0}
+                        className="flex items-center justify-center text-rose-600 hover:text-rose-700 transition-all shrink-0 ml-1"
+                        title="Xuất PDF"
                     >
-                        <FileText size={18} />
-                        Xuất PDF
+                        <FaFilePdf size={28} className="cursor-pointer" />
                     </button>
                 </div>
 
@@ -316,7 +317,7 @@ export default function ReturnsDailyReportPage() {
                                 {entrySizes.map((s) => (
                                     <th key={s} className="border-b border-r border-slate-200 px-1 py-3 text-center font-bold text-slate-800 w-11">{s}</th>
                                 ))}
-                                <th className="px-4 py-3 text-center font-bold text-slate-700 border-b border-slate-200">Thao tác</th>
+                                <th className="sticky right-0 z-50 bg-slate-100 border-b border-l border-slate-200 px-3 py-3 text-center font-bold text-slate-700 w-24">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -359,12 +360,12 @@ export default function ReturnsDailyReportPage() {
                                                         </td>
                                                     );
                                                 })}
-                                                <td className="border-b border-slate-100 px-3 py-2 text-center whitespace-nowrap">
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        <button onClick={() => setEditModal({ open: true, row })} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                                <td className={`sticky right-0 z-20 ${rowBg} border-l border-b border-slate-100 px-2 py-2 group-hover:bg-blue-50 whitespace-nowrap`}>
+                                                    <div className="flex justify-center gap-2">
+                                                        <button onClick={() => setEditModal({ open: true, row })} className="p-1 text-[#3b82f6] hover:bg-blue-100 rounded-md transition-colors" title="Chỉnh sửa">
                                                             <Edit2 size={16} />
                                                         </button>
-                                                        <button onClick={() => handleDelete(row.id)} className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                                                        <button onClick={() => handleDelete(row.id)} className="p-1 text-[#ef4444] hover:bg-red-50 rounded-md transition-colors" title="Xóa">
                                                             <Trash2 size={16} />
                                                         </button>
                                                     </div>
