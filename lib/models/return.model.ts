@@ -32,6 +32,14 @@ export class ReturnModel {
     return result;
   }
 
+  static async checkDuplicate(type: "received" | "shipped", data: { ry_number: string, client: string, date: string, shipping_round: number }) {
+    const table = type === "received" ? "return_received" : "return_shipped";
+    const dateCol = type === "received" ? "received_date" : "shipped_date";
+    const query = `SELECT id FROM ${table} WHERE ry_number = ? AND client = ? AND ${dateCol} = ? AND shipping_round = ?`;
+    const [rows] = await db.query<RowDataPacket[]>(query, [data.ry_number, data.client, data.date, data.shipping_round]);
+    return rows.length > 0;
+  }
+
   static async getReceivedFiltered(whereSQL: string, params: DbParams) {
     const query = `
       SELECT
@@ -125,5 +133,20 @@ export class ReturnModel {
     const [shippedRows] = await db.query<RowDataPacket[]>(shippedQuery, params);
 
     return { receivedRows, shippedRows };
+  }
+
+  static async getClients() {
+    const query = `
+      SELECT DISTINCT client FROM (
+        SELECT client FROM orders WHERE client IS NOT NULL
+        UNION
+        SELECT client FROM return_received WHERE client IS NOT NULL
+        UNION
+        SELECT client FROM return_shipped WHERE client IS NOT NULL
+      ) as combined_clients
+      ORDER BY client ASC
+    `;
+    const [rows] = await db.query<RowDataPacket[]>(query);
+    return rows.map(r => r.client);
   }
 }

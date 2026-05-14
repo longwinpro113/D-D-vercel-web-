@@ -42,21 +42,19 @@ export default function ReturnsRemainingReportPage() {
 
     useEffect(() => {
         setMounted(true);
-        const loadInitialData = async () => {
+        const loadClients = async () => {
             try {
-                const res = await axios.get("/api/orders/clients");
-                const list = Array.isArray(res.data)
-                    ? (res.data as Array<{ client?: string }>)
-                        .map((item) => item.client)
-                        .filter((v): v is string => Boolean(v))
-                    : [];
+                const res = await axios.get("/api/returns/clients");
+                const list = Array.isArray(res.data) ? (res.data as string[]) : [];
                 setClients(list);
-                if (list.length > 0) setClient(list[0]);
+                if (!client && list.length > 0) {
+                    setClient(list[0]);
+                }
             } catch (err) {
                 console.error("[API] Load clients error:", err);
             }
         };
-        void loadInitialData();
+        void loadClients();
     }, []);
 
     const fetchRows = useCallback(async (clientName: string) => {

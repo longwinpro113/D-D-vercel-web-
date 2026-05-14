@@ -60,12 +60,8 @@ export default function ReturnsDailyReportPage() {
     useEffect(() => {
         const loadClients = async () => {
             try {
-                const res = await axios.get("/api/orders/clients");
-                const list = Array.isArray(res.data)
-                    ? (res.data as Array<{ client?: string }>)
-                        .map((item) => item.client)
-                        .filter((value): value is string => Boolean(value))
-                    : [];
+                const res = await axios.get("/api/returns/clients");
+                const list = Array.isArray(res.data) ? (res.data as string[]) : [];
                 setClients(list);
                 if (!client && list.length > 0) {
                     setClient(list[0]);
@@ -221,6 +217,7 @@ export default function ReturnsDailyReportPage() {
                                 <th className="px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">
                                     {reportType === "received" ? "SL Nhận" : "SL Trả"}
                                 </th>
+                                <th className="px-4 py-3 text-center font-bold text-rose-700 whitespace-nowrap border-b border-slate-200 bg-rose-50">Số dư Lô</th>
                                 {entrySizes.map((s) => (
                                     <th key={s} className="border-b border-r border-slate-200 px-1 py-3 text-center font-bold text-slate-800 w-11">{s}</th>
                                 ))}
@@ -254,6 +251,9 @@ export default function ReturnsDailyReportPage() {
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.product || "-"}</td>
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#0284c7] text-center whitespace-nowrap">
                                                     {reportType === "received" ? row.total_received : row.total_shipped}
+                                                </td>
+                                                <td className={`border-b border-r border-slate-100 px-3 py-2.5 font-bold text-center whitespace-nowrap ${row.lot_balance === 0 ? "text-emerald-600 bg-emerald-50/20" : "text-rose-600 bg-rose-50/20"}`}>
+                                                    {row.lot_balance === 0 ? "Xong" : row.lot_balance}
                                                 </td>
                                                 {entrySizes.map((s) => {
                                                     const val = row[sizeToCol(s)];

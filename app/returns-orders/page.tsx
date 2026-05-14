@@ -51,12 +51,8 @@ export default function ReturnsOrdersPage() {
     useEffect(() => {
         const loadClients = async () => {
             try {
-                const res = await axios.get("/api/orders/clients");
-                const list = Array.isArray(res.data)
-                    ? (res.data as Array<{ client?: string }>)
-                        .map((item) => item.client)
-                        .filter((value): value is string => Boolean(value))
-                    : [];
+                const res = await axios.get("/api/returns/clients");
+                const list = Array.isArray(res.data) ? (res.data as string[]) : [];
                 setClients(list);
                 if (!client && list.length > 0) {
                     setClient(list[0]);

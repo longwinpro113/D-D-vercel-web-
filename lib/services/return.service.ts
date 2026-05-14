@@ -4,10 +4,24 @@ import { sizeColumns } from "../models/order.model";
 
 export class ReturnService {
   static async createReceived(data: Record<string, DbValue>) {
+    const isDup = await ReturnModel.checkDuplicate("received", {
+      ry_number: String(data.ry_number),
+      client: String(data.client),
+      date: String(data.received_date),
+      shipping_round: Number(data.shipping_round)
+    });
+    if (isDup) throw new Error("Dữ liệu nhận hàng này đã tồn tại (trùng RY, Ngày, Khách, Lô).");
     return await ReturnModel.createReceived(data);
   }
 
   static async createShipped(data: Record<string, DbValue>) {
+    const isDup = await ReturnModel.checkDuplicate("shipped", {
+      ry_number: String(data.ry_number),
+      client: String(data.client),
+      date: String(data.shipped_date),
+      shipping_round: Number(data.shipping_round)
+    });
+    if (isDup) throw new Error("Dữ liệu trả hàng này đã tồn tại (trùng RY, Ngày, Khách, Lô).");
     return await ReturnModel.createShipped(data);
   }
 
@@ -25,7 +39,17 @@ export class ReturnService {
     }
 
     const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
-    return await ReturnModel.getReceivedFiltered(whereSQL, params);
+    const rows = await ReturnModel.getReceivedFiltered(whereSQL, params);
+    
+    // Get summary to calculate balance
+    const summary = await this.getRemainingStock(client);
+    return rows.map(row => {
+      const balanceEntry = summary.find(s => s.ry_number === row.ry_number && s.shipping_round === row.shipping_round);
+      return {
+        ...row,
+        lot_balance: balanceEntry ? balanceEntry.remaining_quantity : 0
+      };
+    });
   }
 
   static async getShippedList(client?: string, ry_number?: string) {
@@ -42,7 +66,16 @@ export class ReturnService {
     }
 
     const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
-    return await ReturnModel.getShippedFiltered(whereSQL, params);
+    const rows = await ReturnModel.getShippedFiltered(whereSQL, params);
+    
+    const summary = await this.getRemainingStock(client);
+    return rows.map(row => {
+      const balanceEntry = summary.find(s => s.ry_number === row.ry_number && s.shipping_round === row.shipping_round);
+      return {
+        ...row,
+        lot_balance: balanceEntry ? balanceEntry.remaining_quantity : 0
+      };
+    });
   }
 
   static async getRemainingStock(client?: string) {
@@ -101,5 +134,9 @@ export class ReturnService {
     });
 
     return Array.from(combined.values());
+  }
+
+  static async getClients() {
+    return await ReturnModel.getClients();
   }
 }
