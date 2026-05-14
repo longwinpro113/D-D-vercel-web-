@@ -26,10 +26,16 @@ import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 
 dayjs.extend(customParseFormat);
-import { ChevronDown, X as LucideX, Edit, Trash2, Search, RotateCcw, FileText } from "lucide-react";
+import { ChevronDown, X as LucideX, Edit, Trash2, Search, RotateCcw, FileText, Settings2 } from "lucide-react";
 import { FaFilePdf } from "react-icons/fa6";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { SizeMappingModal } from "@/components/SizeMappingModal";
+
+interface SizeMapping {
+    client_size: string;
+    standard_size: string;
+}
 
 const autocompletePopupIcon = <ChevronDown size={16} />;
 
@@ -61,6 +67,8 @@ export default function ClientOrdersPage() {
         message: "",
         severity: "success",
     });
+    const [mappings, setMappings] = useState<SizeMapping[]>([]);
+    const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
 
     const lastClientRef = useRef("");
 
@@ -79,8 +87,9 @@ export default function ClientOrdersPage() {
                     : [];
                 setClients(clientList);
                 if (clientList.length > 0) {
-                    setClient(clientList[0]);
-                    lastClientRef.current = clientList[0];
+                    const firstClient = clientList[0];
+                    setClient(firstClient);
+                    lastClientRef.current = firstClient;
                 }
                 setOrders(Array.isArray(ordersRes.data) ? (ordersRes.data as OrderRow[]) : []);
             } catch (err) {
@@ -102,11 +111,26 @@ export default function ClientOrdersPage() {
         }
     }, []);
 
+    const fetchMappings = useCallback(async (clientName: string) => {
+        if (!clientName) {
+            setMappings([]);
+            return;
+        }
+        try {
+            const res = await axios.get(`/api/size-mappings?client=${encodeURIComponent(clientName)}`);
+            setMappings(Array.isArray(res.data) ? res.data : []);
+        } catch (err) {
+            console.error("[API] Fetch mapping error:", err);
+            setMappings([]);
+        }
+    }, []);
+
     useEffect(() => {
         if (mounted && client) {
-            void fetchRows(client || "");
+            void fetchRows(client);
+            void fetchMappings(client);
         }
-    }, [client, mounted, fetchRows]);
+    }, [client, mounted, fetchRows, fetchMappings]);
 
     const filteredRows = React.useMemo(() => {
         if (!orderRy) return rows;
@@ -226,7 +250,11 @@ export default function ClientOrdersPage() {
             if (activeSizes.length === 0 && entrySizes.length > 0) activeSizes = [entrySizes[0]];
 
             const head = [[
-                "STT", "ĐƠN HÀNG", "ARTICLE", "MODEL NAME", "SẢN PHẨM", "ĐỢT", "CRD", "TỔNG", ...activeSizes.map(String)
+                "STT", "ĐƠN HÀNG", "ARTICLE", "MODEL NAME", "SẢN PHẨM", "ĐỢT", "CRD", "TỔNG", 
+                ...activeSizes.map(s => {
+                    const m = mappings.find(map => map.standard_size === String(s));
+                    return m ? `${s} (${m.client_size})` : String(s);
+                })
             ]];
 
             const body = filteredRows.map((row, i) => [
@@ -247,7 +275,7 @@ export default function ClientOrdersPage() {
                 body: body,
                 theme: 'grid',
                 tableWidth: 'wrap', // Fit content
-                styles: { font: 'Roboto', fontSize: activeSizes.length > 12 ? 7 : 8, cellPadding: 3, valign: 'middle', halign: 'center' },
+                styles: { font: 'Roboto', fontSize: activeSizes.length > 15 ? 7 : 9, cellPadding: 2, valign: 'middle', halign: 'center' },
                 headStyles: { fillColor: [241, 245, 249], textColor: [0, 0, 0], fontStyle: 'bold' },
                 margin: { left: 30, right: 30 },
             });
@@ -356,10 +384,10 @@ export default function ClientOrdersPage() {
 
                 <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 touch-pan-x overscroll-x-contain report-scrollbar">
                     <table className="border-collapse text-sm w-max min-w-full table-auto report-scrollbar">
-                        <thead className="sticky top-0 z-40 bg-slate-100 text-slate-600">
+                        <thead className="sticky top-0 z-20 bg-slate-100 text-slate-600">
                             <tr className="border-b border-slate-200">
-                                <th className="sticky left-0 z-50 bg-slate-100 px-3 py-3 text-center font-bold text-slate-800 w-12 border-r border-transparent shadow-[inset_-1px_0_0_0_#e2e8f0]">STT</th>
-                                <th className="sticky left-12 z-50 bg-slate-100 px-3 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-transparent shadow-[inset_-1px_0_0_0_#e2e8f0]">ĐƠN HÀNG (RY)</th>
+                                <th className="sticky left-0 z-30 bg-slate-100 px-3 py-3 text-center font-bold text-slate-800 w-12 border-r border-transparent shadow-[inset_-1px_0_0_0_#e2e8f0]">STT</th>
+                                <th className="sticky left-12 z-30 bg-slate-100 px-3 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-transparent shadow-[inset_-1px_0_0_0_#e2e8f0]">ĐƠN HÀNG (RY)</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">ARTICLE</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">MODEL NAME</th>
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">SẢN PHẨM</th>
@@ -367,9 +395,17 @@ export default function ClientOrdersPage() {
                                 <th className="bg-slate-100 px-4 py-3 text-center font-bold text-slate-800 whitespace-nowrap border-r border-slate-100">CRD</th>
                                 <th className="bg-slate-200 px-4 py-3 text-center font-bold text-blue-800 whitespace-nowrap border-r border-slate-100">TỔNG</th>
                                 {
-                                    entrySizes.map((s) => (
-                                        <th key={s} className="bg-slate-100 px-1 py-3 text-center font-bold text-slate-800 w-12 border border-white">{s}</th>
-                                    ))}
+                                    entrySizes.map((s) => {
+                                        const m = mappings.find(map => map.standard_size === String(s));
+                                        return (
+                                            <th key={s} className="bg-slate-100 px-1 py-3 text-center font-bold text-slate-800 w-12 border border-white sticky top-0 z-30">
+                                                <div className="flex flex-col leading-tight">
+                                                    <span>{s}</span>
+                                                    {m && <span className="text-[10px] text-blue-600 font-medium">({m.client_size})</span>}
+                                                </div>
+                                            </th>
+                                        );
+                                    })}
                                 <th className="sticky right-0 z-40 bg-slate-100 px-3 py-3 text-center font-bold text-slate-800 w-24 border-l border-slate-100">ACTION</th>
                             </tr>
                         </thead>
@@ -434,14 +470,28 @@ export default function ClientOrdersPage() {
                                     slotProps={{ textField: { fullWidth: true } }}
                                 />
                             </LocalizationProvider>
+                            <Button 
+                                variant="outlined" 
+                                startIcon={<Settings2 size={18} />}
+                                onClick={() => setIsMappingModalOpen(true)}
+                                sx={{ borderRadius: "10px", textTransform: "none", height: "56px" }}
+                            >
+                                Cài đặt quy đổi size
+                            </Button>
                         </div>
                         <div className="mt-8 grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 bg-slate-50 p-4 rounded-2xl">
-                            {entrySizes.map((s) => (
-                                <div key={s} className="flex flex-col gap-1">
-                                    <span className="text-center text-[10px] font-bold text-slate-400 capitalize">{s}</span>
-                                    <input type="number" value={editForm.sizeValues[s] || ""} onChange={(e) => setEditForm({ ...editForm, sizeValues: { ...editForm.sizeValues, [s]: e.target.value } })} className="w-full rounded-lg border border-slate-200 p-2 text-center text-sm font-bold focus:border-blue-500 outline-none" />
-                                </div>
-                            ))}
+                            {entrySizes.map((s) => {
+                                const m = mappings.find(map => map.standard_size === String(s));
+                                return (
+                                    <div key={s} className="flex flex-col gap-1">
+                                        <span className="text-center text-[10px] font-bold text-slate-400 capitalize flex flex-col h-7 justify-center">
+                                            <span>{s}</span>
+                                            {m && <span className="text-blue-600 text-[9px] leading-none">({m.client_size})</span>}
+                                        </span>
+                                        <input type="number" value={editForm.sizeValues[s] || ""} onChange={(e) => setEditForm({ ...editForm, sizeValues: { ...editForm.sizeValues, [s]: e.target.value } })} className="w-full rounded-lg border border-slate-200 p-2 text-center text-sm font-bold focus:border-blue-500 outline-none" />
+                                    </div>
+                                );
+                            })}
                         </div>
                         <div className="mt-8 flex justify-end gap-3 border-t pt-6">
                             <button onClick={() => setEditRow(null)} className="cursor-pointer rounded-xl border border-slate-200 px-6 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors">Hủy</button>
@@ -460,6 +510,13 @@ export default function ClientOrdersPage() {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
+
+            <SizeMappingModal 
+                open={isMappingModalOpen} 
+                onClose={() => setIsMappingModalOpen(false)} 
+                clientName={client || ""}
+                onMappingChanged={() => fetchMappings(client || "")}
+            />
 
             <Dialog
                 open={Boolean(deleteConfirm)}

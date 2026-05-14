@@ -178,7 +178,7 @@ export default function RemainingReportPage() {
                 body: body,
                 theme: 'grid',
                 tableWidth: 'wrap', // Fit content
-                styles: { font: 'Roboto', fontSize: activeSizes.length > 15 ? 6 : 7.5, cellPadding: 2, valign: 'middle', halign: 'center' },
+                styles: { font: 'Roboto', fontSize: activeSizes.length > 15 ? 7 : 9, cellPadding: 2, valign: 'middle', halign: 'center' },
                 headStyles: { fillColor: [241, 245, 249], textColor: [0, 0, 0], fontStyle: 'bold' },
                 margin: { left: 30, right: 30 },
             });

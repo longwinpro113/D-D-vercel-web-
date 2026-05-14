@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 import Autocomplete from "@mui/material/Autocomplete";
@@ -8,10 +8,16 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import type { Dayjs } from "dayjs";
-import { Snackbar, Alert, type AlertColor } from "@mui/material";
-import { ChevronDown, Save, RotateCcw } from "lucide-react";
+import { Snackbar, Alert, type AlertColor, Typography, IconButton } from "@mui/material";
 import axios from "axios";
 import { entrySizes, sizeToCol } from "@/lib/size";
+import { ArrowRightLeft, X as LucideX, Settings2, Save, RotateCcw } from "lucide-react";
+import { SizeMappingModal } from "@/components/SizeMappingModal";
+
+interface SizeMapping {
+    client_size: string;
+    standard_size: string;
+}
 
 type RequiredFieldKey = "customer" | "article" | "order" | "delivery";
 
@@ -44,6 +50,12 @@ export default function OrdersEntryFormPage() {
     const [productOptions, setProductOptions] = useState<string[]>(defaultProductOptions);
     const [sizeValues, setSizeValues] = useState<Record<string, string>>({});
     const [missingRequiredFields, setMissingRequiredFields] = useState<RequiredFieldKey[]>([]);
+    
+    // Size Mapping Logic
+    const [mappings, setMappings] = useState<SizeMapping[]>([]);
+    const [clientSizeValues, setClientSizeValues] = useState<Record<string, string>>({});
+    const [showConversion, setShowConversion] = useState(false);
+    const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
 
     const totalSize = useMemo(
         () => entrySizes.reduce((sum, size) => sum + (parseFloat(sizeValues[size]) || 0), 0),
@@ -80,7 +92,26 @@ export default function OrdersEntryFormPage() {
         fetchField("ry_number", setOrderOptions);
         fetchField("model_name", setModelOptions);
         fetchField("product", (items) => setProductOptions(Array.from(new Set([...defaultProductOptions, ...items]))));
+
+        // Fetch Size Mappings for the selected client
+        const loadMappings = () => {
+            axios.get(`/api/size-mappings?client=${encodeURIComponent(formValues.customer)}`).then((res) => {
+                setMappings(Array.isArray(res.data) ? res.data : []);
+            }).catch(() => setMappings([]));
+        };
+        loadMappings();
+        (window as any).refreshMappings = loadMappings; // Optional helper
     }, [formValues.customer]);
+
+    const handleClientSizeChange = useCallback((clientSize: string, value: string) => {
+        setClientSizeValues(prev => ({ ...prev, [clientSize]: value }));
+        
+        // Find corresponding standard size
+        const mapping = mappings.find(m => m.client_size === clientSize);
+        if (mapping) {
+            setSizeValues(prev => ({ ...prev, [mapping.standard_size]: value }));
+        }
+    }, [mappings]);
 
     const handleReset = () => {
         setExportPortDate(null);
@@ -89,6 +120,8 @@ export default function OrdersEntryFormPage() {
         setMissingRequiredFields([]);
         setFormValues({ customer: "", article: "", order: "", delivery: "", modelName: "", product: "" });
         setSizeValues({});
+        setClientSizeValues({});
+        setShowConversion(false);
     };
 
     const requiredLabel = (label: string, key: RequiredFieldKey) => (
@@ -98,10 +131,10 @@ export default function OrdersEntryFormPage() {
         </>
     );
 
-    const updateRequiredField = (key: RequiredFieldKey, value: string) => {
+    const updateRequiredField = useCallback((key: RequiredFieldKey, value: string) => {
         setFormValues((prev) => ({ ...prev, [key]: value }));
         setMissingRequiredFields((prev) => (value.trim() ? prev.filter((item) => item !== key) : prev));
-    };
+    }, []);
 
     const handleSave = async () => {
         const required = ["customer", "article", "order", "delivery"] as const;
@@ -140,9 +173,10 @@ export default function OrdersEntryFormPage() {
         } catch (error: any) {
             console.error("[API] Error saving order:", error);
             const isDuplicate = error.response?.status === 409 || error.response?.data?.error === "DUPLICATE_ENTRY";
+            const serverError = error.response?.data?.message || error.response?.data?.error || "Lỗi không xác định";
             setSnackbar({ 
                 open: true, 
-                message: isDuplicate ? "Dữ liệu đã tồn tại (mã PO/RY này đã có)." : "Lỗi khi lưu đơn hàng.", 
+                message: isDuplicate ? "Dữ liệu đã tồn tại (mã PO/RY này đã có)." : `Lỗi khi lưu: ${serverError}`, 
                 severity: "error" 
             });
         } finally {
@@ -208,14 +242,79 @@ export default function OrdersEntryFormPage() {
                     <Box className="flex items-center gap-4 mb-4 shrink-0">
                         <h2 className="text-lg font-bold text-black border-none m-0">Nhập số lượng size</h2>
                         <Box className={`rounded-xl bg-black px-4 py-2 text-[15px] font-bold text-white shadow-sm transition-opacity duration-200 ${totalSize > 0 ? "opacity-100" : "opacity-0"}`}>Tổng: {totalSize}</Box>
+                        
+                        <Box className="ml-auto flex items-center gap-2">
+                            <button 
+                                onClick={() => setIsMappingModalOpen(true)}
+                                disabled={!formValues.customer}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${
+                                    !formValues.customer 
+                                    ? "bg-slate-50 text-slate-300 cursor-not-allowed border border-slate-100" 
+                                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                }`}
+                                title={!formValues.customer ? "Vui lòng chọn khách hàng trước" : "Cài đặt quy đổi size cho khách hàng này"}
+                            >
+                                <Settings2 size={16} />
+                                Cài đặt quy đổi
+                            </button>
+
+                            <button 
+                                onClick={() => setShowConversion(!showConversion)}
+                                disabled={!formValues.customer || mappings.length === 0}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${
+                                    (!formValues.customer || mappings.length === 0)
+                                    ? "bg-slate-50 text-slate-300 cursor-not-allowed border border-slate-100"
+                                    : (showConversion ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600 hover:bg-blue-100')
+                                }`}
+                                title={!formValues.customer ? "Vui lòng chọn khách hàng trước" : (mappings.length === 0 ? "Khách hàng này chưa có cấu hình quy đổi" : "")}
+                            >
+                                <ArrowRightLeft size={16} />
+                                {showConversion ? "Ẩn Quy đổi" : "Nhập theo size khách"}
+                            </button>
+                        </Box>
                     </Box>
-                    <Box className="grid flex-1 min-h-0 grid-cols-3 gap-x-3 gap-y-5 overflow-y-auto pr-1 pt-1 pb-4 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 no-scrollbar">
-                        {entrySizes.map((size) => (
-                            <Box key={size} className="flex flex-col items-center">
-                                <span className="text-[14px] font-semibold mb-0.5 text-gray-700 leading-none">{size}</span>
-                                <input type="number" value={sizeValues[size] || ""} onChange={(e) => setSizeValues((prev) => ({ ...prev, [size]: e.target.value }))} className={`w-full h-12 px-2 border border-gray-200 rounded-lg text-center text-lg font-semibold focus:outline-none focus:border-black transition-all ${!sizeValues[size] ? "bg-gray-100" : "bg-white"}`} />
+
+                    {showConversion && mappings.length > 0 && (
+                        <Box className="mb-6 p-4 bg-blue-50/50 rounded-xl border border-blue-100 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <Box className="flex items-center justify-between mb-3">
+                                <Typography className="text-sm font-bold text-blue-800 flex items-center gap-2">
+                                    <ArrowRightLeft size={14} /> Quy đổi cho khách: {formValues.customer}
+                                </Typography>
+                                <IconButton size="small" onClick={() => setShowConversion(false)}><LucideX size={14} /></IconButton>
                             </Box>
-                        ))}
+                            <Box className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                                {mappings.map((m) => (
+                                    <Box key={m.client_size} className="flex flex-col items-center">
+                                        <span className="text-[11px] font-bold text-blue-600 mb-0.5 whitespace-nowrap">Size {m.client_size} (➔ {m.standard_size})</span>
+                                        <input 
+                                            type="number" 
+                                            value={clientSizeValues[m.client_size] || ""} 
+                                            onChange={(e) => handleClientSizeChange(m.client_size, e.target.value)}
+                                            placeholder="-"
+                                            className="w-full h-10 px-2 border border-blue-200 rounded-lg text-center text-sm font-bold bg-white focus:outline-none focus:border-blue-500 transition-all shadow-sm" 
+                                        />
+                                    </Box>
+                                ))}
+                            </Box>
+                        </Box>
+                    )}
+                    <Box className="grid flex-1 min-h-0 grid-cols-3 gap-x-3 gap-y-5 overflow-y-auto pr-1 pt-1 pb-4 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 no-scrollbar">
+                        {entrySizes.map((size) => {
+                            const m = mappings.find(map => map.standard_size === String(size));
+                            return (
+                                <Box key={size} className="flex flex-col items-center">
+                                    <span className="text-[12px] font-semibold mb-1 text-gray-700 leading-none flex flex-col items-center justify-center h-7">
+                                        <span>{size}</span>
+                                        {m ? (
+                                            <span className="text-[10px] text-blue-600 font-bold leading-none mt-0.5">({m.client_size})</span>
+                                        ) : (
+                                            <span className="h-[10px]" /> 
+                                        )}
+                                    </span>
+                                    <input type="number" value={sizeValues[size] || ""} onChange={(e) => setSizeValues((prev) => ({ ...prev, [size]: e.target.value }))} className={`w-full h-12 px-2 border border-gray-200 rounded-lg text-center text-lg font-semibold focus:outline-none focus:border-black transition-all ${!sizeValues[size] ? "bg-gray-100" : "bg-white"}`} />
+                                </Box>
+                            );
+                        })}
                     </Box>
                 </Box>
 
@@ -225,6 +324,17 @@ export default function OrdersEntryFormPage() {
                 </Box>
             </Box>
             <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={handleCloseSnackbar} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}><Alert onClose={handleCloseSnackbar} severity={snackbar.severity} variant="filled" sx={{ width: "100%" }}>{snackbar.message}</Alert></Snackbar>
+            
+            <SizeMappingModal 
+                open={isMappingModalOpen} 
+                onClose={() => setIsMappingModalOpen(false)} 
+                clientName={formValues.customer}
+                onMappingChanged={() => {
+                    axios.get(`/api/size-mappings?client=${encodeURIComponent(formValues.customer)}`).then((res) => {
+                        setMappings(Array.isArray(res.data) ? res.data : []);
+                    });
+                }}
+            />
             <style jsx global>{`
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

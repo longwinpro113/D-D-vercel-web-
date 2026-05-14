@@ -42,7 +42,7 @@ export function Navbar() {
   };
 
   return (
-    <nav className="relative z-1000 w-full shrink-0 border-b border-white/10 bg-black text-white">
+    <nav className="relative z-100 w-full shrink-0 border-b border-white/10 bg-black text-white">
       <div className="flex h-20 w-full items-center justify-between gap-4 px-4 md:px-8">
         <div className="flex items-center gap-8 min-w-0">
           <a
@@ -167,7 +167,7 @@ export function Navbar() {
                   <DropdownItem
                     href="/returns-progress"
                     icon={<ChartGantt size={18} />}
-                    title="Theo Dõi Tiến Độ Hàng Trả Sửa"
+                    title="Tiến Độ Hàng Trả Sửa"
                     desc="Số lượng còn tồn (Nhận - Trả)"
                   />
                 </div>

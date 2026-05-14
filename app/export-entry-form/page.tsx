@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 import Autocomplete from "@mui/material/Autocomplete";
@@ -9,9 +9,15 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import type { Dayjs } from "dayjs";
 import { Snackbar, Alert, type AlertColor } from "@mui/material";
-import { ChevronDown, RotateCcw, Save } from "lucide-react";
 import axios from "axios";
 import { entrySizes, sizeToCol } from "@/lib/size";
+import { ArrowRightLeft, Settings2, X as LucideX, ChevronDown, Save, RotateCcw } from "lucide-react";
+import { SizeMappingModal } from "@/components/SizeMappingModal";
+
+interface SizeMapping {
+    client_size: string;
+    standard_size: string;
+}
 import { getErrorMessage, type ClientRow } from "@/lib/types";
 
 type OrderRecord = {
@@ -47,6 +53,10 @@ export default function ExportEntryFormPage() {
         message: "",
         severity: "success",
     });
+    const [mappings, setMappings] = useState<SizeMapping[]>([]);
+    const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
+    const [isClientInputMode, setIsClientInputMode] = useState(false);
+    const [clientSizeValues, setClientSizeValues] = useState<Record<string, string>>({});
 
     useEffect(() => {
         axios.get("/api/orders/clients").then((res) => {
@@ -62,7 +72,30 @@ export default function ExportEntryFormPage() {
         axios.get(`/api/orders?client=${encodeURIComponent(client)}`).then((res) => {
             setOrders(Array.isArray(res.data) ? (res.data as OrderRecord[]) : []);
         }).catch(err => console.error("[API] Load orders error:", err));
+
+        // Fetch Size Mappings
+        const loadMappings = () => {
+            axios.get(`/api/size-mappings?client=${encodeURIComponent(client)}`).then((res) => {
+                const data = Array.isArray(res.data) ? res.data : [];
+                setMappings(data);
+                // Reset client values
+                const initialClientValues: Record<string, string> = {};
+                data.forEach(m => {
+                    initialClientValues[m.client_size] = "";
+                });
+                setClientSizeValues(initialClientValues);
+            }).catch(() => setMappings([]));
+        };
+        loadMappings();
     }, [client]);
+
+    const handleClientSizeChange = useCallback((clientSize: string, value: string) => {
+        setClientSizeValues(prev => ({ ...prev, [clientSize]: value }));
+        const mapping = mappings.find(m => m.client_size === clientSize);
+        if (mapping) {
+            setSizeValues(prev => ({ ...prev, [mapping.standard_size]: value }));
+        }
+    }, [mappings]);
 
     const selectedOrder = useMemo(() => orders.find(o => o.ry_number === orderRy) || null, [orderRy, orders]);
 
@@ -168,10 +201,78 @@ export default function ExportEntryFormPage() {
                         <TextField label="Ghi chú" variant="outlined" fullWidth multiline maxRows={3} value={note} onChange={(e) => setNote(e.target.value)} sx={getSharedTextFieldSx(note)} />
                     </Box>
                 </LocalizationProvider>
-                <Box className="flex-1 flex min-h-0 flex-col overflow-hidden">
-                    <Box className="flex items-center gap-4 mb-4 shrink-0"><h2 className="text-lg font-bold text-black border-none m-0">Nhập số lượng size</h2><Box className={`rounded-xl bg-black px-4 py-2 text-[15px] font-bold text-white shadow-sm transition-opacity duration-200 ${totalSize > 0 ? "opacity-100" : "opacity-0"}`}>Tổng: {totalSize}</Box></Box>
+
+                <Box className="flex-1 flex min-h-0 flex-col overflow-hidden mt-4">
+                    <Box className="flex items-center gap-4 mb-4 shrink-0">
+                        <h2 className="text-lg font-bold text-black border-none m-0">
+                            {isClientInputMode ? "Nhập số lượng theo size khách" : "Nhập số lượng size chuẩn"}
+                        </h2>
+                        <Box className={`rounded-xl bg-black px-4 py-2 text-[15px] font-bold text-white shadow-sm transition-opacity duration-200 ${totalSize > 0 ? "opacity-100" : "opacity-0"}`}>Tổng: {totalSize}</Box>
+                        
+                        <Box className="ml-auto flex items-center gap-2">
+                            <button 
+                                onClick={() => setIsMappingModalOpen(true)}
+                                disabled={!client}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${
+                                    !client 
+                                    ? "bg-slate-50 text-slate-300 cursor-not-allowed border border-slate-100" 
+                                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                }`}
+                                title={!client ? "Vui lòng chọn khách hàng trước" : "Cài đặt quy đổi size cho khách hàng này"}
+                            >
+                                <Settings2 size={16} />
+                                Cài đặt quy đổi
+                            </button>
+
+                            <button 
+                                onClick={() => setIsClientInputMode(!isClientInputMode)}
+                                disabled={!client || mappings.length === 0}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${
+                                    (!client || mappings.length === 0)
+                                    ? "bg-slate-50 text-slate-300 cursor-not-allowed border border-slate-100"
+                                    : (isClientInputMode ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600 hover:bg-blue-100')
+                                }`}
+                                title={!client ? "Vui lòng chọn khách hàng trước" : (mappings.length === 0 ? "Khách hàng này chưa có cấu hình quy đổi" : "")}
+                            >
+                                <ArrowRightLeft size={16} />
+                                {isClientInputMode ? "Ẩn Quy đổi" : "Nhập theo size khách"}
+                            </button>
+                        </Box>
+                    </Box>
                     <Box className="grid flex-1 min-h-0 grid-cols-3 gap-x-3 gap-y-5 overflow-y-auto pr-1 pt-1 pb-4 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 no-scrollbar">
-                        {entrySizes.map((s) => <Box key={s} className="flex flex-col items-center"><span className="text-[14px] font-semibold mb-0.5 text-gray-700 leading-none">{s}</span><input type="number" value={sizeValues[s] || ""} onChange={(e) => setSizeValues(p => ({ ...p, [s]: e.target.value }))} className={`w-full h-12 px-2 border border-gray-200 rounded-lg text-center text-lg font-semibold focus:outline-none focus:border-black transition-all ${!sizeValues[s] ? "bg-gray-100" : "bg-white"}`} /></Box>)}
+                        {isClientInputMode ? (
+                            mappings.map((m) => (
+                                <Box key={m.client_size} className="flex flex-col items-center">
+                                    <span className="text-[12px] font-semibold mb-1 text-gray-700 leading-none flex flex-col items-center justify-center h-7">
+                                        <span>{m.client_size}</span>
+                                        <span className="text-[10px] text-blue-600 font-bold leading-none mt-0.5">({m.standard_size})</span>
+                                    </span>
+                                    <input 
+                                        type="number" 
+                                        value={clientSizeValues[m.client_size] || ""} 
+                                        onChange={(e) => handleClientSizeChange(m.client_size, e.target.value)} 
+                                        className={`w-full h-12 px-2 border border-blue-200 rounded-lg text-center text-lg font-semibold focus:outline-none focus:border-blue-600 transition-all ${!clientSizeValues[m.client_size] ? "bg-blue-50/30" : "bg-white"}`} 
+                                    />
+                                </Box>
+                            ))
+                        ) : (
+                            entrySizes.map((s) => {
+                                const m = mappings.find(map => map.standard_size === String(s));
+                                return (
+                                    <Box key={s} className="flex flex-col items-center">
+                                        <span className="text-[12px] font-semibold mb-1 text-gray-700 leading-none flex flex-col items-center justify-center h-7">
+                                            <span>{s}</span>
+                                            {m ? (
+                                                <span className="text-[10px] text-blue-600 font-bold leading-none mt-0.5">({m.client_size})</span>
+                                            ) : (
+                                                <span className="h-[10px]" />
+                                            )}
+                                        </span>
+                                        <input type="number" value={sizeValues[s] || ""} onChange={(e) => setSizeValues(p => ({ ...p, [s]: e.target.value }))} className={`w-full h-12 px-2 border border-gray-200 rounded-lg text-center text-lg font-semibold focus:outline-none focus:border-black transition-all ${!sizeValues[s] ? "bg-gray-100" : "bg-white"}`} />
+                                    </Box>
+                                );
+                            })
+                        )}
                     </Box>
                 </Box>
                 <Box className="flex gap-4 mt-2 pt-4 border-t border-gray-100 shrink-0">
@@ -180,6 +281,17 @@ export default function ExportEntryFormPage() {
                 </Box>
             </Box>
             <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={handleCloseSnackbar} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}><Alert onClose={handleCloseSnackbar} severity={snackbar.severity} variant="filled" sx={{ width: "100%" }}>{snackbar.message}</Alert></Snackbar>
+            
+            <SizeMappingModal 
+                open={isMappingModalOpen} 
+                onClose={() => setIsMappingModalOpen(false)} 
+                clientName={client}
+                onMappingChanged={() => {
+                    axios.get(`/api/size-mappings?client=${encodeURIComponent(client)}`).then((res) => {
+                        setMappings(Array.isArray(res.data) ? res.data : []);
+                    });
+                }}
+            />
             <style jsx global>{`
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

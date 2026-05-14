@@ -8,10 +8,16 @@ import { useSharedReportClient } from "@/lib/useSharedReportClient";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import { Snackbar, Alert } from "@mui/material";
-import { ChevronDown, X as LucideX, Edit, Trash2 } from "lucide-react";
+import { ChevronDown, X as LucideX, Edit, Trash2, Save, RotateCcw, Settings2 } from "lucide-react";
 import { FaFilePdf } from "react-icons/fa6";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { SizeMappingModal } from "@/components/SizeMappingModal";
+
+interface SizeMapping {
+    client_size: string;
+    standard_size: string;
+}
 
 type HistoryDateOption = {
     export_date: string;
@@ -104,6 +110,8 @@ export default function DailyReportPage() {
         message: "",
         severity: "success",
     });
+    const [mappings, setMappings] = useState<SizeMapping[]>([]);
+    const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
     const clientRef = useRef(client);
 
     const isMounted = useSyncExternalStore(
@@ -142,29 +150,48 @@ export default function DailyReportPage() {
         void loadClients();
     }, [setSharedClient]);
 
+    const fetchMappings = useCallback(async (clientName: string) => {
+        if (!clientName) {
+            setMappings([]);
+            return;
+        }
+        try {
+            const res = await axios.get(`/api/size-mappings?client=${encodeURIComponent(clientName)}`);
+            setMappings(Array.isArray(res.data) ? res.data : []);
+        } catch (err) {
+            console.error("[API] Load mappings error:", err);
+        }
+    }, []);
+
     useEffect(() => {
-        const loadDates = async () => {
+        const loadData = async () => {
             if (!client) {
                 setAvailableDates([]);
                 setSelectedDate(undefined);
+                setMappings([]);
                 return;
             }
+            
             try {
-                const res = await axios.get(`/api/history-export/dates?client=${encodeURIComponent(client)}`);
-                const dates = Array.isArray(res.data) ? (res.data as HistoryDateOption[]) : [];
+                const [datesRes, mappingsRes] = await Promise.all([
+                    axios.get(`/api/history-export/dates?client=${encodeURIComponent(client)}`),
+                    axios.get(`/api/size-mappings?client=${encodeURIComponent(client)}`)
+                ]);
+
+                const dates = Array.isArray(datesRes.data) ? (datesRes.data as HistoryDateOption[]) : [];
                 setAvailableDates(dates);
+                setMappings(Array.isArray(mappingsRes.data) ? mappingsRes.data : []);
+
                 if (dates.length > 0) {
                     setSelectedDate(dates[0].export_date);
                 } else {
                     setSelectedDate(undefined);
                 }
             } catch (err) {
-                console.error("[API] Load dates error:", err);
-                setAvailableDates([]);
-                setSelectedDate(undefined);
+                console.error("[API] Load client data error:", err);
             }
         };
-        void loadDates();
+        void loadData();
     }, [client]);
 
     const fetchRows = useCallback(async () => {
@@ -342,7 +369,12 @@ export default function DailyReportPage() {
 
                 const head = [[
                     "STT", "ĐƠN HÀNG", "CRD", "ĐỢT", "MODEL NAME", "SL GIAO", 
-                    "CÒN LẠI", "ĐƠN VỊ", "ART", ...activeSizes.map(String), "GHI CHÚ"
+                    "CÒN LẠI", "ĐƠN VỊ", "ART", 
+                    ...activeSizes.map(s => {
+                        const m = mappings.find(map => map.standard_size === String(s));
+                        return m ? `${s} (${m.client_size})` : String(s);
+                    }), 
+                    "GHI CHÚ"
                 ]];
 
                 const body = group.rows.map((row, i) => {
@@ -371,14 +403,7 @@ export default function DailyReportPage() {
                     body: body,
                     theme: 'grid',
                     tableWidth: 'wrap', // Fit content
-                    styles: {
-                        font: 'Roboto',
-                        fontSize: activeSizes.length > 15 ? 6 : 7.5,
-                        cellPadding: 2,
-                        valign: 'middle',
-                        halign: 'center',
-                        lineColor: [100, 100, 100]
-                    },
+                    styles: { font: 'Roboto', fontSize: activeSizes.length > 15 ? 7 : 9, cellPadding: 2, valign: 'middle', halign: 'center', lineColor: [100, 100, 100] },
                     headStyles: {
                         fillColor: [241, 245, 249],
                         textColor: [0, 0, 0],
@@ -584,8 +609,8 @@ export default function DailyReportPage() {
                     <table className="border-separate border-spacing-0 text-[14px] w-max min-w-full table-auto">
                         <thead className="sticky top-0 z-40 bg-slate-100">
                             <tr className="">
-                                <th className="md:sticky md:left-0 top-0 z-50 bg-slate-100 shadow-[inset_-1px_-1px_0_0_#e2e8f0] px-2 py-3 text-center font-bold text-slate-700 w-12">STT</th>
-                                <th className="md:sticky md:left-[48px] top-0 z-50 bg-slate-100 shadow-[inset_-1px_-1px_0_0_#e2e8f0] px-3 py-3 text-center font-bold text-slate-700 whitespace-nowrap">Đơn Hàng</th>
+                                <th className="md:sticky md:left-0 top-0 z-30 bg-slate-100 shadow-[inset_-1px_-1px_0_0_#e2e8f0] px-2 py-3 text-center font-bold text-slate-700 w-12">STT</th>
+                                <th className="md:sticky md:left-[48px] top-0 z-30 bg-slate-100 shadow-[inset_-1px_-1px_0_0_#e2e8f0] px-3 py-3 text-center font-bold text-slate-700 whitespace-nowrap">Đơn Hàng</th>
                                 <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Đợt</th>
                                 <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Article</th>
                                 <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Model Name</th>
@@ -596,9 +621,17 @@ export default function DailyReportPage() {
                                 <th className="md:sticky top-0 bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Ngày</th>
                                 <th className="md:sticky top-0 bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Còn Lại</th>
                                 <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Trạng Thái</th>
-                                {entrySizes.map((s) => (
-                                    <th key={s} className="md:sticky top-0 bg-slate-100 border-b border-r border-slate-200 px-1 py-3 text-center font-bold text-slate-800 w-11">{s}</th>
-                                ))}
+                                {entrySizes.map((s) => {
+                                    const m = mappings.find(map => map.standard_size === String(s));
+                                    return (
+                                        <th key={s} className="md:sticky top-0 bg-slate-100 border-b border-r border-slate-200 px-1 py-3 text-center font-bold text-slate-800 w-11">
+                                            <div className="flex flex-col leading-tight">
+                                                <span>{s}</span>
+                                                {m && <span className="text-[10px] text-blue-600 font-medium">({m.client_size})</span>}
+                                            </div>
+                                        </th>
+                                    );
+                                })}
                                 <th className="md:sticky md:right-0 top-0 z-40 bg-slate-100 border-b border-l border-slate-200 px-3 py-3 text-center font-bold text-slate-700 w-24 print:hidden">Actions</th>
                             </tr>
                         </thead>
@@ -673,6 +706,17 @@ export default function DailyReportPage() {
                 <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} variant="filled" sx={{ width: '100%' }}>{snackbar.message}</Alert>
             </Snackbar>
 
+            <SizeMappingModal 
+                open={isMappingModalOpen} 
+                onClose={() => setIsMappingModalOpen(false)} 
+                clientName={client || ""}
+                onMappingChanged={() => {
+                    axios.get(`/api/size-mappings?client=${encodeURIComponent(client || "")}`).then((res) => {
+                        setMappings(Array.isArray(res.data) ? res.data : []);
+                    });
+                }}
+            />
+
             {editRow && (
                 <div className="fixed inset-0 z-999 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setEditRow(null)}>
                     <div className="max-h-[90vh] w-full max-w-5xl overflow-auto rounded-2xl bg-white p-6 shadow-2xl border border-slate-200" onClick={e => e.stopPropagation()}>
@@ -689,19 +733,34 @@ export default function DailyReportPage() {
                                 <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">Ngày giao hàng</span>
                                 <input type="date" value={editForm.export_date} onChange={(e) => setEditForm(prev => ({ ...prev, export_date: e.target.value }))} className={`w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all ${!editForm.export_date ? "bg-[#e2e8f0]" : "bg-white"}`} />
                             </label>
-                            <label className="block md:col-span-2">
+                            <label className="block md:col-span-1">
                                 <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">Ghi chú</span>
                                 <input value={editForm.note} onChange={(e) => setEditForm(prev => ({ ...prev, note: e.target.value }))} className={`w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all ${!editForm.note ? "bg-[#e2e8f0]" : "bg-white"}`} />
+                            </label>
+                            <label className="block md:col-span-1">
+                                <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">Quy đổi Size</span>
+                                <button 
+                                    onClick={() => setIsMappingModalOpen(true)}
+                                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Settings2 size={16} /> Thiết lập
+                                </button>
                             </label>
                         </div>
 
                         <div className="mt-8 grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                            {entrySizes.map((size) => (
-                                <label key={size} className="block">
-                                    <span className="mb-1 block text-center text-[11px] font-bold text-slate-400">{size}</span>
-                                    <input type="number" value={editForm.sizeValues[size] === "0" || !editForm.sizeValues[size] ? "" : editForm.sizeValues[size]} onChange={(e) => setEditForm(prev => ({ ...prev, sizeValues: { ...prev.sizeValues, [size]: e.target.value } }))} className={`w-full rounded-xl border border-slate-200 px-2 py-2 text-center text-[13px] font-bold outline-none focus:border-slate-900 transition-all ${!editForm.sizeValues[size] || editForm.sizeValues[size] === "0" ? "bg-[#e2e8f0]" : "bg-white"}`} />
-                                </label>
-                            ))}
+                            {entrySizes.map((size) => {
+                                const m = mappings.find(map => map.standard_size === String(size));
+                                return (
+                                    <label key={size} className="block">
+                                        <span className="mb-1 flex flex-col items-center text-[10px] font-bold text-slate-400">
+                                            <span>{size}</span>
+                                            {m && <span className="text-blue-600">({m.client_size})</span>}
+                                        </span>
+                                        <input type="number" value={editForm.sizeValues[size] === "0" || !editForm.sizeValues[size] ? "" : editForm.sizeValues[size]} onChange={(e) => setEditForm(prev => ({ ...prev, sizeValues: { ...prev.sizeValues, [size]: e.target.value } }))} className={`w-full rounded-xl border border-slate-200 px-2 py-2 text-center text-[13px] font-bold outline-none focus:border-slate-900 transition-all ${!editForm.sizeValues[size] || editForm.sizeValues[size] === "0" ? "bg-[#e2e8f0]" : "bg-white"}`} />
+                                    </label>
+                                );
+                            })}
                         </div>
 
                         <div className="mt-8 flex justify-end gap-3 border-t border-slate-100 pt-6">
