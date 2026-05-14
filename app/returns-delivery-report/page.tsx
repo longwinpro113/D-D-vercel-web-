@@ -179,6 +179,7 @@ export default function ReturnsDeliveryReportPage() {
                                 <th className="px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">CRD</th>
                                 <th className="px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Product</th>
                                 <th className="px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Trả</th>
+                                <th className="px-4 py-3 text-center font-bold text-rose-700 whitespace-nowrap border-b border-slate-200 bg-rose-50">Số dư Lô</th>
                                 {entrySizes.map((s) => (
                                     <th key={s} className="border-b border-r border-slate-200 px-1 py-3 text-center font-bold text-slate-800 w-11">{s}</th>
                                 ))}
@@ -193,7 +194,7 @@ export default function ReturnsDeliveryReportPage() {
                                         <td className="sticky left-[48px] z-30 bg-[#f8fafc] border-b border-slate-100 h-10 shadow-[inset_-1px_0_0_0_#e2e8f0] px-3 py-2 text-center font-bold text-blue-600 uppercase tracking-wider whitespace-nowrap">
                                             {group.date}
                                         </td>
-                                        <td colSpan={7 + entrySizes.length} className="bg-[#f8fafc] border-b border-slate-100 px-4 py-2"></td>
+                                        <td colSpan={8 + entrySizes.length} className="bg-[#f8fafc] border-b border-slate-100 px-4 py-2"></td>
                                     </tr>
                                     {group.rows.map((row, index) => {
                                         const rowBg = index % 2 === 0 ? "bg-white" : "bg-slate-50";
@@ -212,6 +213,9 @@ export default function ReturnsDeliveryReportPage() {
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.product || "-"}</td>
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#0284c7] text-center whitespace-nowrap">
                                                     {row.total_shipped}
+                                                </td>
+                                                <td className={`border-b border-r border-slate-100 px-3 py-2.5 font-bold text-center whitespace-nowrap ${row.lot_balance === 0 ? "text-emerald-600 bg-emerald-50/20" : "text-rose-600 bg-rose-50/20"}`}>
+                                                    {row.lot_balance === 0 ? "Xong" : row.lot_balance}
                                                 </td>
                                                 {entrySizes.map((s) => {
                                                     const val = row[`s${String(s).replace(".", "_")}`];
