@@ -7,7 +7,9 @@ import { useSharedReportClient } from "@/lib/useSharedReportClient";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import { Snackbar, Alert } from "@mui/material";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, FileText } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 type ReturnReportRow = {
     id: string | number;
@@ -73,8 +75,12 @@ export default function ReturnsDeliveryReportPage() {
 
         try {
             const params: Record<string, string> = { client };
-            const res = await axios.get("/api/returns/shipped", { params });
-            setRows(Array.isArray(res.data) ? (res.data as ReturnReportRow[]) : []);
+            const res = await axios.get("/api/returns/remaining", { params });
+            // Only show rows that have some activity (either shipped > 0 or received > 0)
+            const data = Array.isArray(res.data) 
+                ? (res.data as ReturnReportRow[]).filter(r => (r.total_received || 0) > 0 || (r.total_shipped || 0) > 0)
+                : [];
+            setRows(data);
         } catch (err) {
             console.error("[API] Fetch returns error:", err);
             setRows([]);
@@ -94,12 +100,57 @@ export default function ReturnsDeliveryReportPage() {
     const grouped = useMemo(() => {
         const map = new Map<string, ReturnReportRow[]>();
         filteredRows.forEach(row => {
-            const date = row.shipped_date || "Unknown";
+            const date = row.shipped_date || row.received_date || "Chờ giao";
             if (!map.has(date)) map.set(date, []);
             map.get(date)!.push(row);
         });
         return Array.from(map.entries()).map(([date, rows]) => ({ date, rows }));
     }, [filteredRows]);
+
+    const exportPDF = () => {
+        if (!client) return;
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+        
+        doc.setFontSize(16);
+        doc.text("BAO BIEU GIAO HANG TRA SUA", doc.internal.pageSize.width / 2, 40, { align: 'center' });
+        doc.setFontSize(12);
+        doc.text(`Khach hang: ${client}`, 40, 65);
+        doc.text(`Ngay xuat: ${new Date().toLocaleDateString('vi-VN')}`, 40, 85);
+
+        const tableHeaders = [
+            "STT", "Ngay", "Don Hang", "Lo", "Article", "Model Name", "CRD", "Product", "SL Tra", "So du Lo", ...entrySizes
+        ];
+
+        const tableRows: any[] = [];
+        let stt = 1;
+        grouped.forEach(group => {
+            group.rows.forEach(row => {
+                tableRows.push([
+                    stt++,
+                    group.date,
+                    row.ry_number,
+                    `Lo ${row.shipping_round}`,
+                    row.article || "-",
+                    row.model_name || "-",
+                    row.CRD || "-",
+                    row.product || "-",
+                    row.total_shipped,
+                    row.lot_balance === 0 ? "Xong" : row.lot_balance,
+                    ...entrySizes.map(s => row[sizeToCol(s)] || 0)
+                ]);
+            });
+        });
+
+        autoTable(doc, {
+            head: [tableHeaders],
+            body: tableRows,
+            startY: 100,
+            styles: { fontSize: 8, font: 'helvetica' },
+            headStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59] },
+        });
+
+        doc.save(`GiaoHang_TraSua_${client}_${new Date().getTime()}.pdf`);
+    };
 
     if (!isMounted) return null;
 
@@ -150,21 +201,28 @@ export default function ReturnsDeliveryReportPage() {
                     />
 
                     <TextField
-                        placeholder="Mã đơn hàng..."
+                        placeholder="Tìm mã đơn hàng..."
                         variant="outlined"
                         value={orderRyFilter}
                         onChange={(e) => setOrderRyFilter(e.target.value)}
                         sx={{
                             width: "240px",
                             "& .MuiOutlinedInput-root": {
-                                height: "42px",
-                                borderRadius: "12px",
-                                backgroundColor: "white",
+                                height: "42px", borderRadius: "12px", backgroundColor: "white",
                                 "& fieldset": { borderColor: "#e2e8f0" },
                                 "&.Mui-focused fieldset": { borderColor: "#000" },
                             }
                         }}
                     />
+
+                    <button
+                        onClick={exportPDF}
+                        disabled={!client}
+                        className="flex items-center gap-2 px-4 h-[42px] bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors font-medium border border-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <FileText size={18} />
+                        Xuất PDF
+                    </button>
                 </div>
 
                 <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 report-scrollbar">

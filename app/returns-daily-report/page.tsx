@@ -7,8 +7,10 @@ import { groupByDate } from "@/lib/shared";
 import { useSharedReportClient } from "@/lib/useSharedReportClient";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
-import { Snackbar, Alert, ToggleButton, ToggleButtonGroup } from "@mui/material";
-import { ChevronDown, X as LucideX, Edit, Trash2 } from "lucide-react";
+import { Snackbar, Alert, ToggleButton, ToggleButtonGroup, Dialog, DialogTitle, DialogContent, DialogActions, Button } from "@mui/material";
+import { ChevronDown, Trash2, Edit2, FileText } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 type ReturnReportRow = {
     id: string | number;
@@ -36,6 +38,13 @@ export default function ReturnsDailyReportPage() {
     const [clients, setClients] = useState<string[]>([]);
     const [rows, setRows] = useState<ReturnReportRow[]>([]);
     const [orderRyFilter, setOrderRyFilter] = useState("");
+    const [mounted, setMounted] = useState(false);
+    
+    const [editModal, setEditModal] = useState<{
+        open: boolean;
+        row: ReturnReportRow | null;
+    }>({ open: false, row: null });
+
     const [snackbar, setSnackbar] = useState<{
         open: boolean;
         message: string;
@@ -46,15 +55,36 @@ export default function ReturnsDailyReportPage() {
         severity: "success",
     });
 
-    const isMounted = useSyncExternalStore(
-        () => () => { },
-        () => true,
-        () => false
-    );
+    useEffect(() => { setMounted(true); }, []);
 
     const handleCloseSnackbar = (_?: React.SyntheticEvent | Event, reason?: string) => {
         if (reason === "clickaway") return;
         setSnackbar(prev => ({ ...prev, open: false }));
+    };
+
+    const handleUpdate = async (id: number | string, data: any) => {
+        try {
+            // Recalculate total based on sizes
+            const total = entrySizes.reduce((sum, s) => sum + (Number(data[sizeToCol(s)]) || 0), 0);
+            const updatePayload = {
+                ...data,
+                [reportType === "received" ? "total_received" : "total_shipped"]: total
+            };
+            
+            // Remove calculated fields that shouldn't be in the UPDATE statement
+            delete updatePayload.id;
+            delete updatePayload.fmt_date;
+            delete updatePayload.lot_balance;
+            delete updatePayload.CRD;
+
+            await axios.put(`/api/returns/${reportType}?id=${id}&type=${reportType}`, updatePayload);
+            setSnackbar({ open: true, message: "Đã cập nhật thành công!", severity: "success" });
+            setEditModal({ open: false, row: null });
+            void fetchRows();
+        } catch (err) {
+            console.error("[Update Error]:", err);
+            setSnackbar({ open: true, message: "Lỗi khi cập nhật dữ liệu.", severity: "error" });
+        }
     };
 
     useEffect(() => {
@@ -102,7 +132,6 @@ export default function ReturnsDailyReportPage() {
     }, [rows, orderRyFilter]);
 
     const grouped = useMemo(() => {
-        // We need a custom groupByDate because the field names are different
         const dateField = reportType === "received" ? "received_date" : "shipped_date";
         const map = new Map<string, ReturnReportRow[]>();
         filteredRows.forEach(row => {
@@ -113,7 +142,66 @@ export default function ReturnsDailyReportPage() {
         return Array.from(map.entries()).map(([date, rows]) => ({ date, rows }));
     }, [filteredRows, reportType]);
 
-    if (!isMounted) return null;
+    const handleDelete = async (id: number | string) => {
+        if (!confirm("Bạn có chắc chắn muốn xóa dòng này?")) return;
+        try {
+            await axios.delete(`/api/returns/${reportType}?id=${id}&type=${reportType}`);
+            setSnackbar({ open: true, message: "Đã xóa thành công!", severity: "success" });
+            void fetchRows();
+        } catch (err) {
+            setSnackbar({ open: true, message: "Lỗi khi xóa dữ liệu.", severity: "error" });
+        }
+    };
+
+    const exportPDF = () => {
+        if (!client) return;
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+        
+        const title = reportType === "received" ? "BAO BIEU NHAN HANG TRA SUA" : "BAO BIEU GIAO HANG TRA SUA";
+        doc.setFontSize(16);
+        doc.text(title, doc.internal.pageSize.width / 2, 40, { align: 'center' });
+        doc.setFontSize(12);
+        doc.text(`Khach hang: ${client}`, 40, 65);
+        doc.text(`Ngay xuat: ${new Date().toLocaleDateString('vi-VN')}`, 40, 85);
+
+        const tableHeaders = [
+            "STT", "Ngay", "Don Hang", "Lo", "Article", "Model Name", "CRD", "Product", 
+            reportType === "received" ? "SL Nhan" : "SL Tra", "So du Lo", ...entrySizes
+        ];
+
+        const tableRows: any[] = [];
+        let stt = 1;
+        grouped.forEach(group => {
+            group.rows.forEach(row => {
+                const rowData = [
+                    stt++,
+                    group.date,
+                    row.ry_number,
+                    `Lo ${row.shipping_round}`,
+                    row.article || "-",
+                    row.model_name || "-",
+                    row.CRD || "-",
+                    row.product || "-",
+                    reportType === "received" ? row.total_received : row.total_shipped,
+                    row.lot_balance === 0 ? "Xong" : row.lot_balance,
+                    ...entrySizes.map(s => row[sizeToCol(s)] || 0)
+                ];
+                tableRows.push(rowData);
+            });
+        });
+
+        autoTable(doc, {
+            head: [tableHeaders],
+            body: tableRows,
+            startY: 100,
+            styles: { fontSize: 8, font: 'helvetica' },
+            headStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59] },
+        });
+
+        doc.save(`${title}_${client}_${new Date().getTime()}.pdf`);
+    };
+
+    if (!mounted) return null;
 
     return (
         <div className="mx-auto flex h-[calc(100dvh-80px)] min-h-[calc(100dvh-80px)] w-full flex-col gap-4 p-4 lg:p-6 overflow-hidden bg-slate-50 text-[14px]">
@@ -186,21 +274,28 @@ export default function ReturnsDailyReportPage() {
                     />
 
                     <TextField
-                        placeholder="Mã đơn hàng..."
+                        placeholder="Tìm mã đơn hàng..."
                         variant="outlined"
                         value={orderRyFilter}
                         onChange={(e) => setOrderRyFilter(e.target.value)}
                         sx={{
                             width: "240px",
                             "& .MuiOutlinedInput-root": {
-                                height: "42px",
-                                borderRadius: "12px",
-                                backgroundColor: "white",
+                                height: "42px", borderRadius: "12px", backgroundColor: "white",
                                 "& fieldset": { borderColor: "#e2e8f0" },
                                 "&.Mui-focused fieldset": { borderColor: "#000" },
                             }
                         }}
                     />
+
+                    <button
+                        onClick={exportPDF}
+                        disabled={!client}
+                        className="flex items-center gap-2 px-4 h-[42px] bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors font-medium border border-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <FileText size={18} />
+                        Xuất PDF
+                    </button>
                 </div>
 
                 <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 report-scrollbar">
@@ -221,7 +316,7 @@ export default function ReturnsDailyReportPage() {
                                 {entrySizes.map((s) => (
                                     <th key={s} className="border-b border-r border-slate-200 px-1 py-3 text-center font-bold text-slate-800 w-11">{s}</th>
                                 ))}
-                                <th className="px-4 py-3 text-center font-bold text-slate-700 border-b border-slate-200">Ghi Chú</th>
+                                <th className="px-4 py-3 text-center font-bold text-slate-700 border-b border-slate-200">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -232,7 +327,7 @@ export default function ReturnsDailyReportPage() {
                                         <td className="sticky left-[48px] z-30 bg-[#f8fafc] border-b border-slate-100 h-10 shadow-[inset_-1px_0_0_0_#e2e8f0] px-3 py-2 text-center font-bold text-blue-600 uppercase tracking-wider whitespace-nowrap">
                                             {group.date}
                                         </td>
-                                        <td colSpan={7 + entrySizes.length} className="bg-[#f8fafc] border-b border-slate-100 px-4 py-2"></td>
+                                        <td colSpan={9 + entrySizes.length} className="bg-[#f8fafc] border-b border-slate-100 px-4 py-2"></td>
                                     </tr>
                                     {group.rows.map((row, index) => {
                                         const rowBg = index % 2 === 0 ? "bg-white" : "bg-slate-50";
@@ -264,8 +359,15 @@ export default function ReturnsDailyReportPage() {
                                                         </td>
                                                     );
                                                 })}
-                                                <td className="border-b border-slate-100 px-4 py-2.5 text-slate-600 max-w-xs truncate" title={row.note || ""}>
-                                                    {row.note || "-"}
+                                                <td className="border-b border-slate-100 px-3 py-2 text-center whitespace-nowrap">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button onClick={() => setEditModal({ open: true, row })} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                                            <Edit2 size={16} />
+                                                        </button>
+                                                        <button onClick={() => handleDelete(row.id)} className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );

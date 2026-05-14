@@ -6,7 +6,9 @@ import { entrySizes, sizeToCol } from "@/lib/size";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import { Snackbar, Alert } from "@mui/material";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, FileText } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 type RemainingReturnRow = {
     ry_number: string;
@@ -83,6 +85,46 @@ export default function ReturnsRemainingReportPage() {
         return rows.filter((r) => r.ry_number.toLowerCase().includes(orderRy.toLowerCase()));
     }, [rows, orderRy]);
 
+    const exportPDF = () => {
+        if (!client) return;
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+        
+        doc.setFontSize(16);
+        doc.text("BÁO CÁO TIẾN ĐỘ HÀNG TRẢ SỬA", doc.internal.pageSize.width / 2, 40, { align: 'center' });
+        doc.setFontSize(12);
+        doc.text(`Khách hàng: ${client}`, 40, 65);
+        doc.text(`Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}`, 40, 85);
+
+        const tableHeaders = [
+            "STT", "Đơn Hàng", "Lô Hàng", "Article", "Model Name", "CRD", "Product", 
+            "SL Đã Nhận", "SL Đã Trả", "Còn Lại", ...entrySizes
+        ];
+
+        const tableRows = filteredRows.map((row, idx) => [
+            idx + 1,
+            row.ry_number,
+            `Lô ${row.shipping_round}`,
+            row.article || "-",
+            row.model_name || "-",
+            row.CRD || "-",
+            row.product || "-",
+            row.total_received,
+            row.total_shipped,
+            row.remaining_quantity === 0 ? "OK" : row.remaining_quantity,
+            ...entrySizes.map(s => row[sizeToCol(s)] || 0)
+        ]);
+
+        autoTable(doc, {
+            head: [tableHeaders],
+            body: tableRows,
+            startY: 100,
+            styles: { fontSize: 8, font: 'helvetica' },
+            headStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59] },
+        });
+
+        doc.save(`TienDo_TraSua_${client}_${new Date().getTime()}.pdf`);
+    };
+
     const handleCloseSnackbar = (_?: React.SyntheticEvent | Event, reason?: string) => {
         if (reason === "clickaway") return;
         setSnackbar((prev) => ({ ...prev, open: false }));
@@ -141,6 +183,15 @@ export default function ReturnsRemainingReportPage() {
                             "& .MuiInputBase-input": { fontSize: "1rem", color: "#1e293b", fontWeight: "500" }
                         }}
                     />
+
+                    <button
+                        onClick={exportPDF}
+                        disabled={!client}
+                        className="flex items-center gap-2 px-4 h-[42px] bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors font-medium border border-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <FileText size={18} />
+                        Xuất PDF
+                    </button>
                 </div>
 
                 <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 report-scrollbar">

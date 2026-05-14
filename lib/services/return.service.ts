@@ -25,6 +25,14 @@ export class ReturnService {
     return await ReturnModel.createShipped(data);
   }
 
+  static async updateReturn(type: "received" | "shipped", id: number | string, data: Record<string, DbValue>) {
+    return await ReturnModel.updateReturn(type, id, data);
+  }
+
+  static async deleteReturn(type: "received" | "shipped", id: number | string) {
+    return await ReturnModel.deleteReturn(type, id);
+  }
+
   static async getReceivedList(client?: string, ry_number?: string) {
     const whereClauses: string[] = [];
     const params: DbParams = [];

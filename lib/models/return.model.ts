@@ -56,8 +56,9 @@ export class ReturnModel {
         DATE_FORMAT(o.CRD, '%d/%m/%Y') AS CRD,
         ${sizeColumns.map((column) => `r.${column}`).join(", ")}
       FROM return_received r
-      LEFT JOIN orders o ON r.ry_number = o.ry_number
-      ${whereSQL ? whereSQL.replace(/\bclient\b/g, "r.client").replace(/\bry_number\b/g, "r.ry_number") : ""}
+      LEFT JOIN orders o ON TRIM(r.ry_number) = TRIM(o.ry_number)
+      ${whereSQL ? whereSQL.replace(/\bclient\b/g, "TRIM(r.client)").replace(/\bry_number\b/g, "TRIM(r.ry_number)") : ""}
+      GROUP BY r.id, o.CRD
       ORDER BY r.received_date DESC, r.id DESC
     `;
     const [rows] = await db.query<RowDataPacket[]>(query, params);
@@ -79,8 +80,9 @@ export class ReturnModel {
         DATE_FORMAT(o.CRD, '%d/%m/%Y') AS CRD,
         ${sizeColumns.map((column) => `s.${column}`).join(", ")}
       FROM return_shipped s
-      LEFT JOIN orders o ON s.ry_number = o.ry_number
-      ${whereSQL ? whereSQL.replace(/\bclient\b/g, "s.client").replace(/\bry_number\b/g, "s.ry_number") : ""}
+      LEFT JOIN orders o ON TRIM(s.ry_number) = TRIM(o.ry_number)
+      ${whereSQL ? whereSQL.replace(/\bclient\b/g, "TRIM(s.client)").replace(/\bry_number\b/g, "TRIM(s.ry_number)") : ""}
+      GROUP BY s.id, o.CRD
       ORDER BY s.shipped_date DESC, s.id DESC
     `;
     const [rows] = await db.query<RowDataPacket[]>(query, params);
@@ -108,7 +110,7 @@ export class ReturnModel {
         SUM(r.total_received) as total_received,
         ${sizeColumns.map(c => `SUM(r.${c}) as rec_${c}`).join(", ")}
       FROM return_received r
-      LEFT JOIN orders o ON r.ry_number = o.ry_number
+      LEFT JOIN orders o ON TRIM(r.ry_number) = TRIM(o.ry_number)
       ${whereSQL ? whereSQL.replace("client", "r.client") : ""}
       GROUP BY r.ry_number, r.client, r.shipping_round, r.article, r.model_name, r.product, o.CRD
     `;
@@ -133,6 +135,28 @@ export class ReturnModel {
     const [shippedRows] = await db.query<RowDataPacket[]>(shippedQuery, params);
 
     return { receivedRows, shippedRows };
+  }
+
+  static async updateReturn(type: "received" | "shipped", id: number | string, data: Record<string, DbValue>) {
+    const table = type === "received" ? "return_received" : "return_shipped";
+    const keys = Object.keys(data);
+    const setSql = keys.map(key => `${key} = ?`).join(", ");
+    const values = keys.map(key => data[key]);
+    
+    const [result] = await db.query<ResultSetHeader>(
+      `UPDATE ${table} SET ${setSql} WHERE id = ?`,
+      [...values, id] as DbParams
+    );
+    return result;
+  }
+
+  static async deleteReturn(type: "received" | "shipped", id: number | string) {
+    const table = type === "received" ? "return_received" : "return_shipped";
+    const [result] = await db.query<ResultSetHeader>(
+      `DELETE FROM ${table} WHERE id = ?`,
+      [id]
+    );
+    return result;
   }
 
   static async getClients() {

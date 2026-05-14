@@ -27,6 +27,35 @@ export class ReturnController {
     }
   }
 
+  static async updateReturn(request: Request) {
+    try {
+      const url = new URL(request.url);
+      const type = url.searchParams.get("type") as "received" | "shipped";
+      const id = url.searchParams.get("id");
+      if (!type || !id) throw new Error("Missing type or id.");
+      
+      const payload = await request.json();
+      await ReturnService.updateReturn(type, id, payload);
+      return NextResponse.json({ message: "Return record updated." });
+    } catch (error) {
+      return NextResponse.json({ error: getErrorMessage(error, "Failed to update return record.") }, { status: 500 });
+    }
+  }
+
+  static async deleteReturn(request: Request) {
+    try {
+      const url = new URL(request.url);
+      const type = url.searchParams.get("type") as "received" | "shipped";
+      const id = url.searchParams.get("id");
+      if (!type || !id) throw new Error("Missing type or id.");
+
+      await ReturnService.deleteReturn(type, id);
+      return NextResponse.json({ message: "Return record deleted." });
+    } catch (error) {
+      return NextResponse.json({ error: getErrorMessage(error, "Failed to delete return record.") }, { status: 500 });
+    }
+  }
+
   static async getReceived(request: Request) {
     try {
       const url = new URL(request.url);
