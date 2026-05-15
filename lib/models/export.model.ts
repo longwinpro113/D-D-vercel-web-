@@ -47,7 +47,7 @@ export class ExportModel {
 
   static async getByRyNumber(ryNumber: string) {
     const [rows] = await db.query(
-      `SELECT id, shipped_quantity, ${sizeColumns.join(", ")} FROM export WHERE ry_number = ? ORDER BY export_date ASC, id ASC`,
+      `SELECT id, shipped_quantity, ${sizeColumns.join(", ")} FROM export WHERE ry_number COLLATE ${RY_NUMBER_COLLATION} = CAST(? AS CHAR CHARACTER SET utf8mb4) COLLATE ${RY_NUMBER_COLLATION} ORDER BY export_date ASC, id ASC`,
       [ryNumber]
     );
     return rows;

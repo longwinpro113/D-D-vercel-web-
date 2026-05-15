@@ -80,7 +80,7 @@ export class OrderModel {
 
   static async getByRyNumber(ryNumber: string) {
     const [rows] = await db.query<RowDataPacket[]>(
-      "SELECT ry_number, total_order_qty FROM orders WHERE ry_number = ? LIMIT 1",
+      `SELECT ry_number, total_order_qty FROM orders WHERE ry_number COLLATE ${DB_COLLATION} = CAST(? AS CHAR CHARACTER SET utf8mb4) COLLATE ${DB_COLLATION} LIMIT 1`,
       [ryNumber]
     );
     return rows[0] || null;
@@ -99,7 +99,7 @@ export class OrderModel {
     const { fieldsSql, values } = buildUpdateParts(updates);
     if (!fieldsSql) return null;
     values.push(ryNumber);
-    await db.query(`UPDATE orders SET ${fieldsSql} WHERE ry_number = ?`, values);
+    await db.query(`UPDATE orders SET ${fieldsSql} WHERE ry_number COLLATE ${DB_COLLATION} = CAST(? AS CHAR CHARACTER SET utf8mb4) COLLATE ${DB_COLLATION}`, values);
     return true;
   }
 
@@ -107,12 +107,12 @@ export class OrderModel {
     const { fieldsSql, values } = buildUpdateParts(updates);
     if (!fieldsSql) return null;
     values.push(id);
-    await db.query(`UPDATE orders SET ${fieldsSql} WHERE ry_number = ?`, values);
+    await db.query(`UPDATE orders SET ${fieldsSql} WHERE ry_number COLLATE ${DB_COLLATION} = CAST(? AS CHAR CHARACTER SET utf8mb4) COLLATE ${DB_COLLATION}`, values);
     return true;
   }
 
   static async delete(id: string | number) {
-    await db.query("DELETE FROM orders WHERE ry_number = ?", [id]);
+    await db.query(`DELETE FROM orders WHERE ry_number COLLATE ${DB_COLLATION} = CAST(? AS CHAR CHARACTER SET utf8mb4) COLLATE ${DB_COLLATION}`, [id]);
     return true;
   }
 

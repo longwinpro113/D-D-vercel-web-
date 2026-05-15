@@ -8,7 +8,7 @@ import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Snackbar, Alert } from "@mui/material";
 import { ChevronDown, Trash2, Edit2 } from "lucide-react";
-import { FaFilePdf } from "react-icons/fa";
+import { FaFilePdf } from "react-icons/fa6";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -157,24 +157,25 @@ export default function ReturnsDeliveryReportPage() {
         doc.text(`Ngay xuat: ${new Date().toLocaleDateString('vi-VN')}`, 40, 85);
 
         const tableHeaders = [
-            "STT", "Ngay", "Don Hang", "Lo", "Article", "Model", "CRD", "Product", "SL Nhan", "Tich Luy", "SL Ngay", "Con Lai", "Trang Thai", ...entrySizes
+            "STT", "Ngay", "Don Hang", "Dot", "Article", "Model Name", "CRD", "Product", 
+            "SL Don Hang", "Tich Luy", "SL Ngay", "Con Lai", "Trang Thai", ...entrySizes
         ];
 
         const tableRows: any[] = [];
         let stt = 1;
         grouped.forEach(group => {
             group.rows.forEach(row => {
-                const status = (row.lot_balance ?? 0) === 0 ? "Ok" : "Not Ok";
+                const status = (row.lot_balance ?? 0) <= 0 ? "Ok" : "Not Ok";
                 tableRows.push([
                     stt++,
                     group.date,
                     row.ry_number,
-                    `Lo ${row.shipping_round}`,
+                    row.shipping_round || "-",
                     row.article || "-",
                     row.model_name || "-",
                     row.CRD || "-",
                     row.product || "-",
-                    row.total_received || 0,
+                    row.total_order || 0,
                     row.accumulated_total || 0,
                     row.total_shipped || 0,
                     row.lot_balance || 0,
@@ -275,51 +276,51 @@ export default function ReturnsDeliveryReportPage() {
                     <table className="border-separate border-spacing-0 text-[13px] w-max min-w-full table-auto">
                         <thead className="sticky top-0 z-40 bg-slate-100">
                             <tr>
-                                <th className="sticky left-0 z-50 bg-slate-100 shadow-[inset_-1px_-1px_0_0_#e2e8f0] px-2 py-3 text-center font-bold text-slate-700 w-12">STT</th>
-                                <th className="sticky left-[48px] z-50 bg-slate-100 shadow-[inset_-1px_-1px_0_0_#e2e8f0] px-3 py-3 text-center font-bold text-slate-700 whitespace-nowrap">Đơn Hàng</th>
-                                <th className="px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Lô</th>
-                                <th className="px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Article</th>
-                                <th className="px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Model Name</th>
-                                <th className="px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">CRD</th>
-                                <th className="px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Product</th>
-                                <th className="bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Nhận</th>
-                                <th className="bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Tích Lũy</th>
-                                <th className="bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Ngày</th>
-                                <th className="bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Còn Lại</th>
-                                <th className="px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Trạng Thái</th>
+                                <th className="md:sticky md:left-0 top-0 z-50 bg-slate-100 shadow-[inset_-1px_-1px_0_0_#e2e8f0] px-2 py-3 text-center font-bold text-slate-700 w-12">STT</th>
+                                <th className="md:sticky md:left-[48px] top-0 z-50 bg-slate-100 shadow-[inset_-1px_-1px_0_0_#e2e8f0] px-3 py-3 text-center font-bold text-slate-700 whitespace-nowrap">Đơn Hàng</th>
+                                <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Đợt</th>
+                                <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Article</th>
+                                <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Model Name</th>
+                                <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">CRD</th>
+                                <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Product</th>
+                                <th className="md:sticky top-0 bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Đơn Hàng</th>
+                                <th className="md:sticky top-0 bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Tích Lũy</th>
+                                <th className="md:sticky top-0 bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Ngày</th>
+                                <th className="md:sticky top-0 bg-slate-50 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">SL Còn Lại</th>
+                                <th className="md:sticky top-0 bg-slate-100 px-4 py-3 text-center font-bold text-slate-700 whitespace-nowrap border-b border-slate-200">Trạng Thái</th>
                                 {entrySizes.map((s) => (
-                                    <th key={s} className="border-b border-r border-slate-200 px-1 py-3 text-center font-bold text-slate-800 w-11">{s}</th>
+                                    <th key={s} className="md:sticky top-0 bg-slate-100 border-b border-r border-slate-200 px-1 py-3 text-center font-bold text-slate-800 w-11">{s}</th>
                                 ))}
-                                <th className="sticky right-0 z-50 bg-slate-100 border-b border-l border-slate-200 px-3 py-3 text-center font-bold text-slate-700 w-24">Actions</th>
+                                <th className="md:sticky md:right-0 top-0 z-50 bg-slate-100 border-b border-l border-slate-200 px-3 py-3 text-center font-bold text-slate-700 w-24">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {grouped.map((group) => (
                                 <React.Fragment key={group.date}>
                                     <tr>
-                                        <td className="sticky left-0 z-30 bg-[#f8fafc] border-b border-slate-100 h-10 shadow-[inset_-1px_0_0_0_#e2e8f0]"></td>
-                                        <td className="sticky left-[48px] z-30 bg-[#f8fafc] border-b border-slate-100 h-10 shadow-[inset_-1px_0_0_0_#e2e8f0] px-3 py-2 text-center font-bold text-blue-600 uppercase tracking-wider whitespace-nowrap">
+                                        <td className="sticky top-[44px] left-0 z-30 bg-[#f8fafc] border-b border-slate-100 h-10 shadow-[inset_-1px_0_0_0_#e2e8f0]"></td>
+                                        <td className="sticky top-[44px] left-[48px] z-30 bg-[#f8fafc] border-b border-slate-100 h-10 shadow-[inset_-1px_0_0_0_#e2e8f0] px-3 py-2 text-center font-bold text-blue-600 uppercase tracking-wider text-[13px] whitespace-nowrap">
                                             {group.date}
                                         </td>
-                                        <td colSpan={11 + entrySizes.length} className="bg-[#f8fafc] border-b border-slate-100 px-4 py-2"></td>
+                                        <td colSpan={11 + entrySizes.length} className="sticky top-[44px] z-20 bg-[#f8fafc] border-b border-slate-100 px-4 py-2"></td>
                                     </tr>
                                     {group.rows.map((row, index) => {
-                                        const status = (row.lot_balance ?? 0) === 0 ? "Ok" : "Not Ok";
+                                        const status = (row.lot_balance ?? 0) <= 0 ? "Ok" : "Not Ok";
                                         const rowBg = index % 2 === 0 ? "bg-white" : "bg-slate-50";
                                         return (
                                             <tr key={row.id} className={`${rowBg} hover:bg-blue-50/20 transition-colors group`}>
-                                                <td className={`sticky left-0 z-10 shadow-[inset_-1px_-1px_0_0_#e2e8f0] px-3 py-2.5 font-bold text-slate-800 text-center whitespace-nowrap ${rowBg} group-hover:bg-blue-50`}>
+                                                <td className={`md:sticky md:left-0 z-10 shadow-[inset_-1px_-1px_0_0_#e2e8f0] px-3 py-2.5 font-bold text-slate-800 text-center whitespace-nowrap ${rowBg} group-hover:bg-blue-50`}>
                                                     {index + 1}
                                                 </td>
-                                                <td className={`sticky left-[48px] z-10 shadow-[inset_-1px_-1px_0_0_#e2e8f0] px-3 py-2.5 font-bold text-slate-900 text-center whitespace-nowrap ${rowBg} group-hover:bg-blue-50`}>
+                                                <td className={`md:sticky md:left-[48px] z-10 shadow-[inset_-1px_-1px_0_0_#e2e8f0] px-3 py-2.5 font-bold text-slate-900 text-center whitespace-nowrap ${rowBg} group-hover:bg-blue-50`}>
                                                     {row.ry_number}
                                                 </td>
-                                                <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-orange-600 text-center whitespace-nowrap">Lô {row.shipping_round}</td>
+                                                <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-orange-600 text-center whitespace-nowrap">{row.shipping_round || "-"}</td>
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.article || "-"}</td>
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.model_name || "-"}</td>
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-blue-600 text-center whitespace-nowrap">{row.CRD || "-"}</td>
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#e59f67] text-center whitespace-nowrap">{row.product || "-"}</td>
-                                                <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#3b82f6] text-center whitespace-nowrap">{row.total_received || 0}</td>
+                                                <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#3b82f6] text-center whitespace-nowrap">{row.total_order || 0}</td>
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#a855f7] text-center whitespace-nowrap">{row.accumulated_total || 0}</td>
                                                 <td className="border-b border-r border-slate-100 px-3 py-2.5 font-bold text-[#0284c7] text-center whitespace-nowrap">{row.total_shipped || 0}</td>
                                                 <td className={`border-b border-r border-slate-100 px-3 py-2.5 font-bold text-center whitespace-nowrap ${row.lot_balance === 0 ? "text-[#16a34a]" : "text-[#ef4444]"}`}>
@@ -334,12 +335,12 @@ export default function ReturnsDeliveryReportPage() {
                                                     const val = row[sizeToCol(s)];
                                                     const isEmpty = !val || Number(val) === 0;
                                                     return (
-                                                        <td key={s} className={`px-1 py-1 text-center border font-semibold whitespace-nowrap ${isEmpty ? 'border-white bg-[#e2e8f0]' : 'border-slate-200 bg-white'}`}>
+                                                        <td key={s} className={`px-1 py-1 text-center border font-semibold text-[13px] whitespace-nowrap ${isEmpty ? 'border-white bg-[#e2e8f0]' : 'border-slate-200 bg-white'}`}>
                                                             {isEmpty ? null : val}
                                                         </td>
                                                     );
                                                 })}
-                                                <td className={`sticky right-0 z-20 ${rowBg} border-l border-b border-slate-100 px-2 py-2 group-hover:bg-blue-50 whitespace-nowrap`}>
+                                                <td className={`md:sticky md:right-0 z-20 ${rowBg} border-l border-b border-slate-100 px-2 py-2 group-hover:bg-blue-50 whitespace-nowrap`}>
                                                     <div className="flex justify-center gap-2">
                                                         <button onClick={() => setEditModal({ open: true, row })} className="p-1 text-[#3b82f6] hover:bg-blue-100 rounded-md transition-colors" title="Chỉnh sửa">
                                                             <Edit2 size={16} />

@@ -51,10 +51,23 @@ export class ReturnService {
     
     // Get summary to calculate balance
     const summary = await this.getRemainingStock(client);
+
+    const runningTotals = new Map<string, number>();
+    for (let i = rows.length - 1; i >= 0; i--) {
+        const row = rows[i];
+        const key = `${row.ry_number}_${row.shipping_round}`;
+        const currentTotal = runningTotals.get(key) || 0;
+        const newTotal = currentTotal + (Number(row.total_received) || 0);
+        runningTotals.set(key, newTotal);
+        row.accumulated_total = newTotal;
+    }
+
     return rows.map(row => {
       const balanceEntry = summary.find(s => s.ry_number === row.ry_number && s.shipping_round === row.shipping_round);
       return {
         ...row,
+        total_shipped: balanceEntry ? balanceEntry.total_shipped : 0,
+        total_order: balanceEntry ? balanceEntry.total_received : 0, // In returns context, the max received is the "order"
         lot_balance: balanceEntry ? balanceEntry.remaining_quantity : 0
       };
     });
@@ -95,6 +108,7 @@ export class ReturnService {
       return {
         ...row,
         total_received: balanceEntry ? balanceEntry.total_received : 0,
+        total_order: balanceEntry ? balanceEntry.total_received : 0,
         lot_balance: balanceEntry ? balanceEntry.remaining_quantity : 0
       };
     });
