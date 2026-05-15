@@ -6,8 +6,8 @@ import { sizeColumns } from "./order.model";
 const DB_COLLATION = "utf8mb4_unicode_ci";
 const RY_NUMBER_COLLATION = DB_COLLATION;
 
-export const EXPORT_INSERT_COLUMNS = ["export_date", "client", "ry_number", "delivery_round", "shipped_quantity", ...sizeColumns, "note"];
-export const EXPORT_UPDATE_COLUMNS = ["export_date", "client", "delivery_round", "shipped_quantity", ...sizeColumns, "note"];
+export const EXPORT_INSERT_COLUMNS = ["export_date", "client", "ry_number", "delivery_round", ...sizeColumns, "note"];
+export const EXPORT_UPDATE_COLUMNS = ["export_date", "client", "delivery_round", ...sizeColumns, "note"];
 
 export class ExportModel {
   static async createRecord(data: Record<string, DbValue>) {

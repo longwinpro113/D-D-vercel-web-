@@ -8,9 +8,9 @@ import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import { Snackbar, Alert } from "@mui/material";
 import { ChevronDown } from "lucide-react";
-import { FaFilePdf } from "react-icons/fa";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { PdfFileIcon } from "@/components/PdfFileIcon";
 
 type ReturnReportRow = {
     id: string | number;
@@ -218,7 +218,7 @@ export default function ReturnsOrdersPage() {
                         className="flex items-center justify-center text-rose-600 hover:text-rose-700 transition-all shrink-0 ml-1"
                         title="Xuất PDF"
                     >
-                        <FaFilePdf size={28} className="cursor-pointer" />
+                        <PdfFileIcon size={28} className="cursor-pointer" />
                     </button>
                 </div>
 

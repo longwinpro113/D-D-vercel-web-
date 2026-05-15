@@ -7,9 +7,9 @@ import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import { Snackbar, Alert } from "@mui/material";
 import { ChevronDown, Search } from "lucide-react";
-import { FaFilePdf } from "react-icons/fa6";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { PdfFileIcon } from "@/components/PdfFileIcon";
 
 type RemainingRow = {
     ry_number: string;
@@ -271,7 +271,7 @@ export default function RemainingReportPage() {
                         title="Xuất PDF"
                         disabled={!client || rows.length === 0}
                     >
-                        <FaFilePdf size={28} className="cursor-pointer" />
+                        <PdfFileIcon size={28} className="cursor-pointer" />
                     </button>
 
                 </div>

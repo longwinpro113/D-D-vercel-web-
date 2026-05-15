@@ -162,9 +162,10 @@ export class ExportService {
   static async createExport(data: Record<string, DbValue>) {
     const payload: Record<string, DbValue> = {};
     
-    // Calculate shipped_quantity
-    const totalShipped = sizeColumns.reduce((sum, col) => sum + toNumber(data[col]), 0);
-    data.shipped_quantity = totalShipped;
+    // Note: shipped_quantity is a STORED GENERATED column in the database.
+    // Do not include it in the insert payload.
+    // const totalShipped = sizeColumns.reduce((sum, col) => sum + toNumber(data[col]), 0);
+    // data.shipped_quantity = totalShipped;
 
     EXPORT_INSERT_COLUMNS.forEach((column) => {
       payload[column] = data[column] ?? (sizeColumns.includes(column) ? 0 : null);
@@ -294,19 +295,16 @@ export class ExportService {
 
     const writableUpdates: Record<string, DbValue> = {};
     
-    // If any size column is being updated, recalculate shipped_quantity
-    const sizeKeys = Object.keys(updates).filter(k => sizeColumns.includes(k));
-    if (sizeKeys.length > 0) {
-      // We need the full row to calculate the new total correctly if only some sizes are provided
-      // or we can just assume the payload contains all sizes we want to sum.
-      // Usually, the frontend sends all sizes.
-      const currentSizes: Record<string, any> = {};
-      sizeColumns.forEach(col => {
-        currentSizes[col] = updates[col] !== undefined ? updates[col] : row[col];
-      });
-      const newTotal = sizeColumns.reduce((sum, col) => sum + toNumber(currentSizes[col]), 0);
-      updates.shipped_quantity = newTotal;
-    }
+    // Note: shipped_quantity is a STORED GENERATED column in the database.
+    // Do not include it in the update payload.
+    // if (sizeKeys.length > 0) {
+    //   const currentSizes: Record<string, any> = {};
+    //   sizeColumns.forEach(col => {
+    //     currentSizes[col] = updates[col] !== undefined ? updates[col] : row[col];
+    //   });
+    //   const newTotal = sizeColumns.reduce((sum, col) => sum + toNumber(currentSizes[col]), 0);
+    //   updates.shipped_quantity = newTotal;
+    // }
 
     EXPORT_UPDATE_COLUMNS.forEach((column) => {
       if (updates[column] !== undefined) writableUpdates[column] = updates[column];

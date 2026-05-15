@@ -27,10 +27,10 @@ import customParseFormat from "dayjs/plugin/customParseFormat";
 
 dayjs.extend(customParseFormat);
 import { ChevronDown, X as LucideX, Edit, Trash2, Search, RotateCcw, FileText, Settings2 } from "lucide-react";
-import { FaFilePdf } from "react-icons/fa6";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { SizeMappingModal } from "@/components/SizeMappingModal";
+import { PdfFileIcon } from "@/components/PdfFileIcon";
 
 interface SizeMapping {
     client_size: string;
@@ -377,7 +377,7 @@ export default function ClientOrdersPage() {
                         title="Xuất PDF"
                         disabled={!client || rows.length === 0}
                     >
-                        <FaFilePdf size={28} className="cursor-pointer" />
+                        <PdfFileIcon size={28} className="cursor-pointer" />
                     </button>
 
                 </div>

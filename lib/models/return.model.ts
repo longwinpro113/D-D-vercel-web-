@@ -3,8 +3,6 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import type { DbParams, DbValue } from "@/lib/types";
 import { sizeColumns } from "./order.model";
 
-const DB_COLLATION = "utf8mb4_unicode_ci";
-
 export class ReturnModel {
   static async createReceived(data: Record<string, DbValue>) {
     const keys = Object.keys(data);
@@ -74,6 +72,7 @@ export class ReturnModel {
         s.client,
         s.shipping_round,
         s.total_shipped,
+        s.note,
         s.article,
         s.model_name,
         s.product,
